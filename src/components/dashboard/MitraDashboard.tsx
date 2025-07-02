@@ -120,7 +120,11 @@ const MitraDashboard = ({ onLogout }: MitraDashboardProps) => {
     try {
       const currentUser = await auth.getCurrentUser();
       if (currentUser) {
-        setMitraProfile(currentUser);
+        const profileUser: Profile = {
+          ...currentUser,
+          role: currentUser.role as "user" | "mitra" | "admin"
+        };
+        setMitraProfile(profileUser);
         
         const allOrders = await storage.getOrders();
         const mitraOrders = allOrders.filter(order => order.mitraId === currentUser.email);

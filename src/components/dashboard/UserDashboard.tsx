@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -80,7 +79,11 @@ const UserDashboard = ({ onLogout }: UserDashboardProps) => {
     try {
       const currentUser = await auth.getCurrentUser();
       if (currentUser) {
-        setUserProfile(currentUser as Profile);
+        const profileUser: Profile = {
+          ...currentUser,
+          role: currentUser.role as "user" | "mitra" | "admin"
+        };
+        setUserProfile(profileUser);
         
         const allOrders = await storage.getOrders();
         const userOrders = allOrders.filter(order => order.userId === currentUser.email);
@@ -202,9 +205,10 @@ const UserDashboard = ({ onLogout }: UserDashboardProps) => {
 
     try {
       const allOrders = await storage.getOrders();
-      const newOrder = {
+      const newOrder: Order = {
         id: Date.now().toString(),
         userId: userProfile.email,
+        mitraId: null, // Initially null until assigned to a mitra
         service: selectedService,
         status: 'menunggu' as const,
         createdAt: new Date().toISOString()
