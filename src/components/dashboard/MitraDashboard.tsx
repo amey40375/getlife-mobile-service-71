@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -122,7 +123,8 @@ const MitraDashboard = ({ onLogout }: MitraDashboardProps) => {
       if (currentUser) {
         const profileUser: Profile = {
           ...currentUser,
-          role: currentUser.role as "user" | "mitra" | "admin"
+          role: currentUser.role as "user" | "mitra" | "admin",
+          status: currentUser.status as "active" | "verified" | "blocked"
         };
         setMitraProfile(profileUser);
         

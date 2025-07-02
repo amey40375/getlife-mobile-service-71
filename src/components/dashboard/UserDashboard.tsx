@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -81,7 +82,8 @@ const UserDashboard = ({ onLogout }: UserDashboardProps) => {
       if (currentUser) {
         const profileUser: Profile = {
           ...currentUser,
-          role: currentUser.role as "user" | "mitra" | "admin"
+          role: currentUser.role as "user" | "mitra" | "admin",
+          status: currentUser.status as "active" | "verified" | "blocked"
         };
         setUserProfile(profileUser);
         
@@ -209,7 +211,7 @@ const UserDashboard = ({ onLogout }: UserDashboardProps) => {
         id: Date.now().toString(),
         userId: userProfile.email,
         mitraId: null, // Initially null until assigned to a mitra
-        service: selectedService,
+        service: selectedService as 'GetClean' | 'GetMassage' | 'GetBarber',
         status: 'menunggu' as const,
         createdAt: new Date().toISOString()
       };
