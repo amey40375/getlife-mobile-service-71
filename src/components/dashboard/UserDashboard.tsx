@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
-import { LogOut, Plus, History, MessageCircle, ShoppingCart, Settings, MapPin, HelpCircle, CreditCard, Upload, Sparkles, Scissors, Heart } from "lucide-react";
+import { LogOut, Plus, History, MessageCircle, ShoppingCart, Settings, MapPin, HelpCircle, CreditCard, Upload, Sparkles, Scissors, Heart, Eye, EyeOff } from "lucide-react";
 import { storage, Profile, Order, ChatMessage } from "@/lib/storage";
 import { auth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -31,6 +30,7 @@ const UserDashboard = ({ onLogout }: UserDashboardProps) => {
   const [currentBanner, setCurrentBanner] = useState(0);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
+  const [showBalance, setShowBalance] = useState(true);
   const { toast } = useToast();
 
   const banners = [
@@ -276,23 +276,33 @@ const UserDashboard = ({ onLogout }: UserDashboardProps) => {
             <CardContent className="p-6">
               <div className="flex justify-between items-center">
                 <div className="space-y-1">
-                  <p className="text-xs text-white" style={{ fontFamily: 'Arial Black', fontSize: '10pt' }}>
+                  <p className="text-xs text-white whitespace-nowrap" style={{ fontFamily: 'Arial Black', fontSize: '10pt' }}>
                     Halo, {userProfile.name}!
                   </p>
                   <p className="text-xs text-white" style={{ fontFamily: 'Arial Black', fontSize: '10pt' }}>
                     Saldo Anda :
                   </p>
-                  <p className="text-lg font-black text-white" style={{ fontFamily: 'Arial Black', fontSize: '10pt' }}>
-                    Rp.{userProfile.saldo.toLocaleString()},-
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-lg font-black text-white" style={{ fontFamily: 'Arial Black', fontSize: '10pt' }}>
+                      {showBalance ? `Rp.${userProfile.saldo.toLocaleString()},-` : 'Rp. ••••••••'}
+                    </p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowBalance(!showBalance)}
+                      className="h-6 w-6 p-0 hover:bg-white/20"
+                    >
+                      {showBalance ? <Eye className="h-4 w-4 text-white" /> : <EyeOff className="h-4 w-4 text-white" />}
+                    </Button>
+                  </div>
                 </div>
                 <Button 
                   onClick={() => setShowTopupModal(true)}
-                  className="bg-white text-black hover:bg-gray-100 shadow-lg hover:shadow-xl transition-all duration-300 px-6 py-3 font-black"
+                  className="bg-white text-black hover:bg-gray-100 shadow-lg hover:shadow-xl transition-all duration-300 px-4 py-2 font-black"
                   style={{ fontFamily: 'Arial Black', fontSize: '10pt' }}
                 >
-                  <Plus className="h-4 w-4 mr-2" />
-                  TOP-UP SALDO
+                  <Plus className="h-4 w-4 mr-1" />
+                  TOP-UP
                 </Button>
               </div>
             </CardContent>
@@ -558,7 +568,6 @@ const UserDashboard = ({ onLogout }: UserDashboardProps) => {
     );
   }
 
-  
   return (
     <div className="min-h-screen bg-gradient-to-br from-background to-muted p-4">
       <div className="flex items-center gap-3 mb-6">

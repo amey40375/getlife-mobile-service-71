@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -6,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { LogOut, Clock, Play, Square, MessageCircle, History, CreditCard, Plus, Upload } from "lucide-react";
+import { LogOut, Clock, Play, Square, MessageCircle, History, CreditCard, Plus, Upload, Eye, EyeOff } from "lucide-react";
 import { storage, Profile, Order, ChatMessage } from "@/lib/storage";
 import { auth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -31,6 +30,7 @@ const MitraDashboard = ({ onLogout }: MitraDashboardProps) => {
   const [currentBanner, setCurrentBanner] = useState(0);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
+  const [showBalance, setShowBalance] = useState(true);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
 
@@ -415,23 +415,33 @@ const MitraDashboard = ({ onLogout }: MitraDashboardProps) => {
             <CardContent className="p-6">
               <div className="flex justify-between items-center">
                 <div className="space-y-1">
-                  <p className="text-xs text-white" style={{ fontFamily: 'Arial Black', fontSize: '10pt' }}>
+                  <p className="text-xs text-white whitespace-nowrap" style={{ fontFamily: 'Arial Black', fontSize: '10pt' }}>
                     Halo, {mitraProfile.name}!
                   </p>
                   <p className="text-xs text-white" style={{ fontFamily: 'Arial Black', fontSize: '10pt' }}>
                     Saldo Anda :
                   </p>
-                  <p className="text-lg font-black text-white" style={{ fontFamily: 'Arial Black', fontSize: '10pt' }}>
-                    Rp.{mitraProfile.saldo.toLocaleString()},-
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-lg font-black text-white" style={{ fontFamily: 'Arial Black', fontSize: '10pt' }}>
+                      {showBalance ? `Rp.${mitraProfile.saldo.toLocaleString()},-` : 'Rp. ••••••••'}
+                    </p>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowBalance(!showBalance)}
+                      className="h-6 w-6 p-0 hover:bg-white/20"
+                    >
+                      {showBalance ? <Eye className="h-4 w-4 text-white" /> : <EyeOff className="h-4 w-4 text-white" />}
+                    </Button>
+                  </div>
                 </div>
                 <Button 
                   onClick={() => setShowTopupModal(true)}
-                  className="bg-white text-black hover:bg-gray-100 shadow-lg hover:shadow-xl transition-all duration-300 px-6 py-3 font-black"
+                  className="bg-white text-black hover:bg-gray-100 shadow-lg hover:shadow-xl transition-all duration-300 px-4 py-2 font-black"
                   style={{ fontFamily: 'Arial Black', fontSize: '10pt' }}
                 >
-                  <Plus className="h-4 w-4 mr-2" />
-                  TOP-UP SALDO
+                  <Plus className="h-4 w-4 mr-1" />
+                  TOP-UP
                 </Button>
               </div>
             </CardContent>
