@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -275,20 +276,20 @@ const UserDashboard = ({ onLogout }: UserDashboardProps) => {
             <CardContent className="p-6">
               <div className="flex justify-between items-center">
                 <div className="space-y-1">
-                  <p className="text-xs text-black" style={{ fontFamily: 'Arial', fontSize: '10pt' }}>
+                  <p className="text-xs text-white" style={{ fontFamily: 'Arial Black', fontSize: '10pt' }}>
                     Halo, {userProfile.name}!
                   </p>
-                  <p className="text-xs text-black" style={{ fontFamily: 'Arial', fontSize: '10pt' }}>
+                  <p className="text-xs text-white" style={{ fontFamily: 'Arial Black', fontSize: '10pt' }}>
                     Saldo Anda :
                   </p>
-                  <p className="text-lg font-black text-black" style={{ fontFamily: 'Arial Black', fontSize: '10pt' }}>
+                  <p className="text-lg font-black text-white" style={{ fontFamily: 'Arial Black', fontSize: '10pt' }}>
                     Rp.{userProfile.saldo.toLocaleString()},-
                   </p>
                 </div>
                 <Button 
                   onClick={() => setShowTopupModal(true)}
                   className="bg-white text-black hover:bg-gray-100 shadow-lg hover:shadow-xl transition-all duration-300 px-6 py-3 font-black"
-                  style={{ fontFamily: 'Arial Black', fontSize: '12pt' }}
+                  style={{ fontFamily: 'Arial Black', fontSize: '10pt' }}
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   TOP-UP SALDO
