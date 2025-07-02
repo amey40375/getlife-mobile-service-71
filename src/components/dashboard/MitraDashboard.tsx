@@ -3,7 +3,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { LogOut, Clock, Play, Square, MessageCircle, History, CreditCard } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { LogOut, Clock, Play, Square, MessageCircle, History, CreditCard, Plus, Upload } from "lucide-react";
 import { storage, Profile, Order } from "@/lib/storage";
 import { auth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -21,6 +23,10 @@ const MitraDashboard = ({ onLogout }: MitraDashboardProps) => {
   const [isWorking, setIsWorking] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
   const [debt, setDebt] = useState(0);
+  const [topupAmount, setTopupAmount] = useState("");
+  const [showTopupModal, setShowTopupModal] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [transferProof, setTransferProof] = useState<File | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
 
@@ -65,6 +71,84 @@ const MitraDashboard = ({ onLogout }: MitraDashboardProps) => {
         setDebt(50000); // Example debt
       }
     }
+  };
+
+  const formatCurrency = (amount: string) => {
+    const numericAmount = amount.replace(/\D/g, '');
+    if (!numericAmount) return '';
+    
+    const formatted = new Intl.NumberFormat('id-ID').format(parseInt(numericAmount));
+    return `Rp.${formatted},-`;
+  };
+
+  const handleTopupSubmit = () => {
+    if (!topupAmount || !mitraProfile) {
+      toast({
+        variant: "destructive",
+        title: "Masukkan nominal",
+        description: "Masukkan nominal top-up"
+      });
+      return;
+    }
+
+    const numericAmount = topupAmount.replace(/\D/g, '');
+    const amount = parseFloat(numericAmount);
+    if (amount <= 0) {
+      toast({
+        variant: "destructive",
+        title: "Nominal tidak valid",
+        description: "Masukkan nominal yang valid"
+      });
+      return;
+    }
+
+    setShowTopupModal(false);
+    setShowPaymentModal(true);
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setTransferProof(file);
+    }
+  };
+
+  const handleSendTopupRequest = () => {
+    if (!transferProof || !topupAmount || !mitraProfile) {
+      toast({
+        variant: "destructive",
+        title: "Upload bukti transfer",
+        description: "Bukti transfer wajib diupload"
+      });
+      return;
+    }
+
+    const numericAmount = topupAmount.replace(/\D/g, '');
+    const amount = parseFloat(numericAmount);
+
+    const transactions = storage.getTransactions();
+    const newTransaction = {
+      id: Date.now().toString(),
+      userId: mitraProfile.email,
+      userName: mitraProfile.name,
+      type: 'topup' as const,
+      amount: amount,
+      status: 'pending' as const,
+      transferProof: transferProof.name,
+      createdAt: new Date().toISOString()
+    };
+
+    storage.setTransactions([...transactions, newTransaction]);
+
+    toast({
+      title: "Permintaan top-up dikirim",
+      description: "Menunggu konfirmasi admin"
+    });
+
+    setTopupAmount("");
+    setTransferProof(null);
+    setShowPaymentModal(false);
+    setCurrentView("main");
   };
 
   const handleAcceptOrder = (order: Order) => {
@@ -220,147 +304,257 @@ const MitraDashboard = ({ onLogout }: MitraDashboardProps) => {
     const activeOrders = orders.filter(order => order.status === 'dikerjakan');
 
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background to-muted p-4">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50 to-blue-50">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
-              Mitra Dashboard
-            </h1>
-            <p className="text-sm text-muted-foreground">Halo, {mitraProfile.name}!</p>
+        <div className="bg-white/80 backdrop-blur-sm border-b border-slate-200/50 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-gradient-to-r from-emerald-600 to-blue-600 rounded-xl flex items-center justify-center">
+                <span className="text-white font-bold text-lg">G</span>
+              </div>
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-emerald-600 to-blue-600 bg-clip-text text-transparent">
+                GetLife
+              </h1>
+            </div>
+            <Button variant="outline" onClick={onLogout} className="hover:bg-red-50 hover:text-red-600 hover:border-red-200">
+              <LogOut className="h-4 w-4 mr-2" />
+              Logout
+            </Button>
           </div>
-          <Button variant="outline" onClick={onLogout}>
-            <LogOut className="h-4 w-4 mr-2" />
-            Logout
-          </Button>
         </div>
 
-        {/* Saldo Card */}
-        <Card className="mb-6 bg-gradient-to-r from-secondary/10 to-primary/10 border-secondary/20">
-          <CardContent className="p-4">
-            <div className="flex justify-between items-center">
-              <div>
-                <p className="text-sm text-muted-foreground">Saldo Anda</p>
-                <p className="text-2xl font-bold text-secondary">Rp{mitraProfile.saldo.toLocaleString()}</p>
-              </div>
-              <Button variant="elegant">
-                <CreditCard className="h-4 w-4 mr-2" />
-                Tarik Saldo
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Active Work Timer */}
-        {isWorking && activeOrder && (
-          <Card className="mb-6 bg-gradient-to-r from-warning/10 to-warning/20 border-warning/30">
-            <CardContent className="p-4">
-              <div className="text-center">
-                <p className="text-sm text-muted-foreground mb-2">Sedang Bekerja: {activeOrder.service}</p>
-                <p className="text-3xl font-bold text-warning mb-2">{formatTime(workTimer)}</p>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Estimasi biaya: Rp{Math.round(workTimer * RATE_PER_SECOND).toLocaleString()}
-                </p>
-                <Button onClick={handleFinishWork} variant="destructive">
-                  <Square className="h-4 w-4 mr-2" />
-                  Selesai
+        {/* Welcome & Balance Card */}
+        <div className="p-6">
+          <Card className="bg-gradient-to-r from-emerald-600/10 via-slate-50/50 to-blue-600/10 border-0 shadow-xl backdrop-blur-sm">
+            <CardContent className="p-6">
+              <div className="flex justify-between items-center">
+                <div className="space-y-1">
+                  <p className="text-lg font-medium text-slate-700">Halo, {mitraProfile.name}!</p>
+                  <div className="flex items-baseline space-x-2">
+                    <span className="text-sm text-slate-500">Saldo Anda</span>
+                    <p className="text-3xl font-bold bg-gradient-to-r from-emerald-600 to-blue-600 bg-clip-text text-transparent">
+                      Rp.{mitraProfile.saldo.toLocaleString()},-
+                    </p>
+                  </div>
+                </div>
+                <Button 
+                  onClick={() => setShowTopupModal(true)}
+                  className="bg-gradient-to-r from-emerald-600 to-blue-600 hover:from-emerald-700 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 px-6 py-3"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  TOP-UP SALDO
                 </Button>
               </div>
             </CardContent>
           </Card>
-        )}
-
-        {/* Pesanan Masuk */}
-        {pendingOrders.length > 0 && (
-          <div className="mb-6">
-            <h2 className="text-lg font-semibold mb-3">Pesanan Masuk</h2>
-            <div className="space-y-3">
-              {pendingOrders.map((order) => (
-                <Card key={order.id}>
-                  <CardContent className="p-4">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <h3 className="font-semibold">{order.service}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          {new Date(order.createdAt).toLocaleString()}
-                        </p>
-                      </div>
-                      <Button
-                        onClick={() => handleAcceptOrder(order)}
-                        variant="success"
-                        disabled={mitraProfile.saldo < 10000}
-                      >
-                        Terima
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Sedang Dikerjakan */}
-        {activeOrders.length > 0 && (
-          <div className="mb-6">
-            <h2 className="text-lg font-semibold mb-3">Sedang Dikerjakan</h2>
-            <div className="space-y-3">
-              {activeOrders.map((order) => (
-                <Card key={order.id}>
-                  <CardContent className="p-4">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <h3 className="font-semibold">{order.service}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          Mulai: {order.startTime ? new Date(order.startTime).toLocaleString() : '-'}
-                        </p>
-                      </div>
-                      {!isWorking && (
-                        <Button
-                          onClick={() => handleStartWork(order)}
-                          variant="success"
-                        >
-                          <Play className="h-4 w-4 mr-2" />
-                          Mulai Bekerja
-                        </Button>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Menu Grid */}
-        <div className="grid grid-cols-2 gap-4">
-          <Button
-            variant="outline"
-            className="h-20 flex-col"
-            onClick={() => setCurrentView("history")}
-          >
-            <History className="h-6 w-6 mb-2" />
-            Riwayat Pesanan
-          </Button>
-
-          <Button
-            variant="outline"
-            className="h-20 flex-col"
-            onClick={() => setCurrentView("chat")}
-          >
-            <MessageCircle className="h-6 w-6 mb-2" />
-            Live Chat Admin
-          </Button>
         </div>
 
-        {/* Info */}
-        {pendingOrders.length === 0 && activeOrders.length === 0 && (
-          <Card className="mt-6">
-            <CardContent className="p-6 text-center">
-              <p className="text-muted-foreground">Belum ada pesanan masuk</p>
-            </CardContent>
-          </Card>
+        {/* Active Work Timer */}
+        {isWorking && activeOrder && (
+          <div className="px-6 mb-6">
+            <Card className="bg-gradient-to-r from-amber-100/80 to-orange-100/80 border-amber-300/30 shadow-xl">
+              <CardContent className="p-6">
+                <div className="text-center">
+                  <p className="text-sm text-slate-700 mb-2 font-medium">Sedang Bekerja: {activeOrder.service}</p>
+                  <p className="text-4xl font-bold text-amber-700 mb-3">{formatTime(workTimer)}</p>
+                  <p className="text-sm text-slate-600 mb-4">
+                    Estimasi biaya: Rp.{Math.round(workTimer * RATE_PER_SECOND).toLocaleString()},-
+                  </p>
+                  <Button 
+                    onClick={handleFinishWork} 
+                    className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+                  >
+                    <Square className="h-4 w-4 mr-2" />
+                    SELESAI
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         )}
+
+        {/* Orders Sections */}
+        <div className="px-6 space-y-6">
+          {/* Pesanan Masuk */}
+          {pendingOrders.length > 0 && (
+            <div>
+              <h2 className="text-lg font-bold text-slate-800 mb-4">📋 Pesanan Masuk</h2>
+              <div className="space-y-3">
+                {pendingOrders.map((order) => (
+                  <Card key={order.id} className="bg-white/70 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300">
+                    <CardContent className="p-4">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <h3 className="font-bold text-slate-800">{order.service}</h3>
+                          <p className="text-sm text-slate-600">
+                            {new Date(order.createdAt).toLocaleString()}
+                          </p>
+                        </div>
+                        <Button
+                          onClick={() => handleAcceptOrder(order)}
+                          className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+                          disabled={mitraProfile.saldo < 10000}
+                        >
+                          TERIMA
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Sedang Dikerjakan */}
+          {activeOrders.length > 0 && (
+            <div>
+              <h2 className="text-lg font-bold text-slate-800 mb-4">⚡ Sedang Dikerjakan</h2>
+              <div className="space-y-3">
+                {activeOrders.map((order) => (
+                  <Card key={order.id} className="bg-white/70 backdrop-blur-sm shadow-lg hover:shadow-xl transition-all duration-300">
+                    <CardContent className="p-4">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <h3 className="font-bold text-slate-800">{order.service}</h3>
+                          <p className="text-sm text-slate-600">
+                            Mulai: {order.startTime ? new Date(order.startTime).toLocaleString() : '-'}
+                          </p>
+                        </div>
+                        {!isWorking && (
+                          <Button
+                            onClick={() => handleStartWork(order)}
+                            className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
+                          >
+                            <Play className="h-4 w-4 mr-2" />
+                            MULAI BEKERJA
+                          </Button>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Menu Grid */}
+          <div className="grid grid-cols-2 gap-4">
+            <Button
+              variant="outline"
+              className="h-20 flex-col bg-white/70 backdrop-blur-sm hover:bg-blue-50 hover:border-blue-200 transition-all duration-300 shadow-lg hover:shadow-xl"
+              onClick={() => setCurrentView("history")}
+            >
+              <History className="h-6 w-6 mb-2 text-blue-600" />
+              <span className="font-medium">Riwayat Pesanan</span>
+            </Button>
+
+            <Button
+              variant="outline"
+              className="h-20 flex-col bg-white/70 backdrop-blur-sm hover:bg-purple-50 hover:border-purple-200 transition-all duration-300 shadow-lg hover:shadow-xl"
+              onClick={() => setCurrentView("chat")}
+            >
+              <MessageCircle className="h-6 w-6 mb-2 text-purple-600" />
+              <span className="font-medium">Live Chat Admin</span>
+            </Button>
+          </div>
+
+          {/* Info */}
+          {pendingOrders.length === 0 && activeOrders.length === 0 && (
+            <Card className="bg-white/70 backdrop-blur-sm shadow-lg">
+              <CardContent className="p-8 text-center">
+                <p className="text-slate-600 font-medium">✨ Belum ada pesanan masuk</p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* Top-up Modal */}
+        <Dialog open={showTopupModal} onOpenChange={setShowTopupModal}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-center text-xl font-bold text-slate-800">Top-Up Saldo</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-6 p-2">
+              <div className="text-center">
+                <p className="text-sm text-slate-600 mb-4">
+                  Saldo saat ini: <span className="font-bold text-emerald-600">Rp.{mitraProfile.saldo.toLocaleString()},-</span>
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                <Label className="text-sm font-medium text-slate-700">Nominal Top-Up *</Label>
+                <Input
+                  type="text"
+                  value={topupAmount}
+                  onChange={(e) => setTopupAmount(formatCurrency(e.target.value))}
+                  placeholder="Rp.0,-"
+                  className="text-lg font-medium text-center border-2 focus:border-emerald-500"
+                />
+              </div>
+
+              <Button 
+                onClick={handleTopupSubmit} 
+                className="w-full bg-gradient-to-r from-emerald-600 to-blue-600 hover:from-emerald-700 hover:to-blue-700 text-white font-medium py-3"
+                disabled={!topupAmount}
+              >
+                PROSES
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Payment Modal */}
+        <Dialog open={showPaymentModal} onOpenChange={setShowPaymentModal}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="text-center text-xl font-bold text-slate-800">Instruksi Pembayaran</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-6 p-2">
+              <div className="bg-gradient-to-r from-emerald-50 to-blue-50 p-4 rounded-xl border border-emerald-200">
+                <p className="text-sm text-slate-700 text-center mb-3">
+                  Untuk Proses Top Up Saldo Silahkan Kirimkan Pembayaran VIA GoPay Di Nomor:
+                </p>
+                <div className="text-center bg-white p-3 rounded-lg border-2 border-dashed border-emerald-300">
+                  <p className="text-lg font-bold text-emerald-600">085137646489</p>
+                  <p className="text-sm text-slate-600">a/n</p>
+                  <p className="text-lg font-bold text-blue-600">UUS KUSMIATI</p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <Label className="text-sm font-medium text-slate-700">
+                  Upload Bukti Transfer Disini <span className="text-red-500">*</span>
+                </Label>
+                <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center hover:border-emerald-400 transition-colors">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    className="hidden"
+                    id="transfer-proof"
+                  />
+                  <label
+                    htmlFor="transfer-proof"
+                    className="cursor-pointer flex flex-col items-center space-y-2"
+                  >
+                    <Upload className="h-8 w-8 text-slate-400" />
+                    <span className="text-sm text-slate-600">
+                      {transferProof ? transferProof.name : "Klik untuk upload bukti transfer"}
+                    </span>
+                  </label>
+                </div>
+              </div>
+
+              <Button 
+                onClick={handleSendTopupRequest} 
+                className="w-full bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-700 hover:to-emerald-700 text-white font-medium py-3"
+                disabled={!transferProof}
+              >
+                KIRIM
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }

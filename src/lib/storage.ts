@@ -42,9 +42,11 @@ export interface Order {
 export interface Transaction {
   id: string;
   userId: string;
-  type: 'topup' | 'withdraw' | 'payment';
+  userName?: string;
+  type: 'topup' | 'payment';
   amount: number;
   status: 'pending' | 'approved' | 'rejected';
+  transferProof?: string;
   createdAt: string;
 }
 

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -5,7 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { LogOut, Users, UserCheck, CreditCard, FileText, Shield } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { LogOut, Users, UserCheck, CreditCard, FileText, Shield, Eye, X, Check } from "lucide-react";
 import { storage, MitraApplication, Profile, Transaction } from "@/lib/storage";
 import { auth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
@@ -18,8 +20,10 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
   const [applications, setApplications] = useState<MitraApplication[]>([]);
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [topupHistory, setTopupHistory] = useState<Transaction[]>([]);
   const [selectedApp, setSelectedApp] = useState<MitraApplication | null>(null);
   const [selectedProfile, setSelectedProfile] = useState<Profile | null>(null);
+  const [selectedHistory, setSelectedHistory] = useState<Transaction | null>(null);
   const [verificationData, setVerificationData] = useState({
     name: "",
     email: "",
@@ -36,7 +40,9 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
   const loadData = () => {
     setApplications(storage.getMitraApplications());
     setProfiles(storage.getProfiles());
-    setTransactions(storage.getTransactions());
+    const allTransactions = storage.getTransactions();
+    setTransactions(allTransactions.filter(t => t.status === 'pending'));
+    setTopupHistory(allTransactions.filter(t => t.status !== 'pending'));
   };
 
   const handleVerifyMitra = () => {
@@ -125,7 +131,9 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
   };
 
   const handleConfirmTopup = (transaction: Transaction) => {
-    const updatedTransactions = transactions.map(t =>
+    // Update transaction status to approved
+    const allTransactions = storage.getTransactions();
+    const updatedTransactions = allTransactions.map(t =>
       t.id === transaction.id ? { ...t, status: 'approved' as const } : t
     );
     storage.setTransactions(updatedTransactions);
@@ -141,6 +149,22 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
     toast({
       title: "Top-up dikonfirmasi",
       description: `Top-up Rp${transaction.amount.toLocaleString()} berhasil dikonfirmasi`
+    });
+
+    loadData();
+  };
+
+  const handleRejectTopup = (transaction: Transaction) => {
+    // Update transaction status to rejected
+    const allTransactions = storage.getTransactions();
+    const updatedTransactions = allTransactions.map(t =>
+      t.id === transaction.id ? { ...t, status: 'rejected' as const } : t
+    );
+    storage.setTransactions(updatedTransactions);
+
+    toast({
+      title: "Top-up ditolak",
+      description: "Permintaan top-up telah ditolak"
     });
 
     loadData();
@@ -191,7 +215,7 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
         </div>
 
         {/* Menu Grid */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-4 mb-6">
           <Button
             variant="outline"
             className="h-20 flex-col"
@@ -230,12 +254,23 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
             onClick={() => setCurrentView("topups")}
           >
             <FileText className="h-6 w-6 mb-2" />
-            Konfirmasi Top-Up
+            Permintaan Top-Up
             {pendingTopups.length > 0 && (
               <Badge variant="destructive" className="mt-1">
                 {pendingTopups.length}
               </Badge>
             )}
+          </Button>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4">
+          <Button
+            variant="outline"
+            className="h-20 flex-col"
+            onClick={() => setCurrentView("history")}
+          >
+            <FileText className="h-6 w-6 mb-2" />
+            Riwayat Top-Up
           </Button>
         </div>
 
@@ -321,6 +356,36 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
             )}
           </DialogContent>
         </Dialog>
+
+        <Dialog open={!!selectedHistory} onOpenChange={() => setSelectedHistory(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Detail Riwayat Top-Up</DialogTitle>
+            </DialogHeader>
+            {selectedHistory && (
+              <div className="space-y-4">
+                <div>
+                  <p><strong>Nama:</strong> {selectedHistory.userName}</p>
+                  <p><strong>Email:</strong> {selectedHistory.userId}</p>
+                  <p><strong>Nominal:</strong> Rp{selectedHistory.amount.toLocaleString()}</p>
+                  <p><strong>Status:</strong> 
+                    <Badge className="ml-2" variant={
+                      selectedHistory.status === 'approved' ? 'default' : 
+                      selectedHistory.status === 'rejected' ? 'destructive' : 'secondary'
+                    }>
+                      {selectedHistory.status === 'approved' ? 'Dikonfirmasi' :
+                       selectedHistory.status === 'rejected' ? 'Ditolak' : 'Pending'}
+                    </Badge>
+                  </p>
+                  <p><strong>Tanggal:</strong> {new Date(selectedHistory.createdAt).toLocaleString()}</p>
+                  {selectedHistory.transferProof && (
+                    <p><strong>Bukti Transfer:</strong> {selectedHistory.transferProof}</p>
+                  )}
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }
@@ -336,7 +401,8 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
           {currentView === "applications" && "Permintaan Mitra"}
           {currentView === "profiles" && "Data Mitra & User"}
           {currentView === "transfer" && "Transfer Saldo"}
-          {currentView === "topups" && "Konfirmasi Top-Up"}
+          {currentView === "topups" && "Permintaan Top-Up"}
+          {currentView === "history" && "Riwayat Top-Up"}
         </h1>
       </div>
 
@@ -415,27 +481,103 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
             return (
               <Card key={transaction.id}>
                 <CardContent className="p-4">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <h3 className="font-semibold">{user?.name || transaction.userId}</h3>
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <h3 className="font-semibold">{transaction.userName || user?.name || transaction.userId}</h3>
                       <p className="text-sm text-muted-foreground">
                         Top-up: Rp{transaction.amount.toLocaleString()}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {new Date(transaction.createdAt).toLocaleString()}
                       </p>
+                      {transaction.transferProof && (
+                        <p className="text-xs text-blue-600 mt-1">
+                          📎 Bukti: {transaction.transferProof}
+                        </p>
+                      )}
                     </div>
-                    <Button onClick={() => handleConfirmTopup(transaction)} variant="success">
-                      Konfirmasi
-                    </Button>
+                    <div className="flex gap-2 ml-4">
+                      <Button 
+                        size="sm"
+                        onClick={() => handleConfirmTopup(transaction)} 
+                        className="bg-green-600 hover:bg-green-700 text-white"
+                      >
+                        <Check className="h-4 w-4 mr-1" />
+                        Konfirmasi
+                      </Button>
+                      <Button 
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => handleRejectTopup(transaction)}
+                      >
+                        <X className="h-4 w-4 mr-1" />
+                        Tolak
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
             );
           })}
           {pendingTopups.length === 0 && (
-            <p className="text-center text-muted-foreground">Tidak ada top-up pending</p>
+            <p className="text-center text-muted-foreground">Tidak ada permintaan top-up pending</p>
           )}
+        </div>
+      )}
+
+      {currentView === "history" && (
+        <div className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Riwayat Top-Up</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nama</TableHead>
+                    <TableHead>Nominal</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Tanggal</TableHead>
+                    <TableHead>Aksi</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {topupHistory.map((transaction) => (
+                    <TableRow key={transaction.id} className="cursor-pointer hover:bg-muted/50">
+                      <TableCell className="font-medium">
+                        {transaction.userName || transaction.userId}
+                      </TableCell>
+                      <TableCell>Rp{transaction.amount.toLocaleString()}</TableCell>
+                      <TableCell>
+                        <Badge variant={
+                          transaction.status === 'approved' ? 'default' : 
+                          transaction.status === 'rejected' ? 'destructive' : 'secondary'
+                        }>
+                          {transaction.status === 'approved' ? 'Dikonfirmasi' :
+                           transaction.status === 'rejected' ? 'Ditolak' : 'Pending'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{new Date(transaction.createdAt).toLocaleDateString()}</TableCell>
+                      <TableCell>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => setSelectedHistory(transaction)}
+                        >
+                          <Eye className="h-4 w-4 mr-1" />
+                          Detail
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              {topupHistory.length === 0 && (
+                <p className="text-center text-muted-foreground py-8">Belum ada riwayat top-up</p>
+              )}
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>
