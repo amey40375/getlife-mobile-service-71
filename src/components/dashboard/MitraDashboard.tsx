@@ -27,6 +27,7 @@ const MitraDashboard = ({ onLogout }: MitraDashboardProps) => {
   const [showTopupModal, setShowTopupModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [transferProof, setTransferProof] = useState<File | null>(null);
+  const [currentBanner, setCurrentBanner] = useState(0);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
 
@@ -34,9 +35,61 @@ const MitraDashboard = ({ onLogout }: MitraDashboardProps) => {
   const RATE_PER_SECOND = HOURLY_RATE / 3600; // Rp 34.72 per second
   const ADMIN_CUT = 0.25; // 25%
 
+  const banners = [
+    {
+      id: 1,
+      title: "GetClean - Kebersihan Rumah Terpercaya",
+      subtitle: "Layanan pembersihan rumah profesional dengan hasil maksimal",
+      image: "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=800&h=300&fit=crop"
+    },
+    {
+      id: 2,
+      title: "GetMassage - Pijat Relaksasi Terbaik",
+      subtitle: "Nikmati pijat tradisional dan modern untuk relaksasi tubuh",
+      image: "https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=800&h=300&fit=crop"
+    },
+    {
+      id: 3,
+      title: "GetBarber - Potong Rambut Profesional",
+      subtitle: "Gaya rambut terkini dengan layanan barber berpengalaman",
+      image: "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=800&h=300&fit=crop"
+    },
+    {
+      id: 4,
+      title: "GetLife - Solusi Hidup Praktis",
+      subtitle: "Semua kebutuhan jasa rumah tangga dalam satu aplikasi",
+      image: "https://images.unsplash.com/photo-1556909114-f6e7ad7d3136?w=800&h=300&fit=crop"
+    },
+    {
+      id: 5,
+      title: "Mitra Terpercaya & Bersertifikat",
+      subtitle: "Semua mitra telah melalui proses verifikasi dan pelatihan",
+      image: "https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=800&h=300&fit=crop"
+    },
+    {
+      id: 6,
+      title: "Harga Transparan & Terjangkau",
+      subtitle: "Tidak ada biaya tersembunyi, bayar sesuai layanan",
+      image: "https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=800&h=300&fit=crop"
+    },
+    {
+      id: 7,
+      title: "Tersedia 24/7 untuk Anda",
+      subtitle: "Layanan kapan saja sesuai kebutuhan dan jadwal Anda",
+      image: "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?w=800&h=300&fit=crop"
+    }
+  ];
+
   useEffect(() => {
     loadData();
+    
+    // Auto slide banner every 4 seconds
+    const interval = setInterval(() => {
+      setCurrentBanner((prev) => (prev + 1) % banners.length);
+    }, 4000);
+
     return () => {
+      clearInterval(interval);
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
@@ -325,21 +378,26 @@ const MitraDashboard = ({ onLogout }: MitraDashboardProps) => {
 
         {/* Welcome & Balance Card */}
         <div className="p-6">
-          <Card className="bg-gradient-to-r from-emerald-600/10 via-slate-50/50 to-blue-600/10 border-0 shadow-xl backdrop-blur-sm">
+          <Card className="bg-gradient-to-r from-blue-500 to-emerald-500 border-0 shadow-xl backdrop-blur-sm">
             <CardContent className="p-6">
               <div className="flex justify-between items-center">
                 <div className="space-y-1">
-                  <p className="text-lg font-medium text-slate-700">Halo, {mitraProfile.name}!</p>
+                  <p className="text-lg font-black text-black" style={{ fontFamily: 'Arial Black', fontSize: '12pt' }}>
+                    Halo, {mitraProfile.name}!
+                  </p>
                   <div className="flex items-baseline space-x-2">
-                    <span className="text-sm text-slate-500">Saldo Anda</span>
-                    <p className="text-3xl font-bold bg-gradient-to-r from-emerald-600 to-blue-600 bg-clip-text text-transparent">
+                    <span className="text-sm text-black font-black" style={{ fontFamily: 'Arial Black', fontSize: '12pt' }}>
+                      Saldo Anda
+                    </span>
+                    <p className="text-3xl font-black text-black" style={{ fontFamily: 'Arial Black' }}>
                       Rp.{mitraProfile.saldo.toLocaleString()},-
                     </p>
                   </div>
                 </div>
                 <Button 
                   onClick={() => setShowTopupModal(true)}
-                  className="bg-gradient-to-r from-emerald-600 to-blue-600 hover:from-emerald-700 hover:to-blue-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 px-6 py-3"
+                  className="bg-white text-black hover:bg-gray-100 shadow-lg hover:shadow-xl transition-all duration-300 px-6 py-3 font-black"
+                  style={{ fontFamily: 'Arial Black', fontSize: '12pt' }}
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   TOP-UP SALDO
@@ -347,6 +405,47 @@ const MitraDashboard = ({ onLogout }: MitraDashboardProps) => {
               </div>
             </CardContent>
           </Card>
+        </div>
+
+        {/* Banner Carousel */}
+        <div className="px-6 mb-6">
+          <div className="relative overflow-hidden rounded-xl shadow-lg">
+            <div 
+              className="flex transition-transform duration-500 ease-in-out"
+              style={{ transform: `translateX(-${currentBanner * 100}%)` }}
+            >
+              {banners.map((banner, index) => (
+                <div key={banner.id} className="w-full flex-shrink-0 relative">
+                  <div 
+                    className="h-48 bg-cover bg-center relative"
+                    style={{ backgroundImage: `url(${banner.image})` }}
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-black/30"></div>
+                    <div className="absolute inset-0 flex flex-col justify-center px-6">
+                      <h3 className="text-white text-xl font-black mb-2" style={{ fontFamily: 'Arial Black' }}>
+                        {banner.title}
+                      </h3>
+                      <p className="text-white/90 text-sm font-medium">
+                        {banner.subtitle}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            {/* Banner indicators */}
+            <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
+              {banners.map((_, index) => (
+                <div
+                  key={index}
+                  className={`w-2 h-2 rounded-full transition-colors ${
+                    index === currentBanner ? 'bg-white' : 'bg-white/50'
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* Active Work Timer */}
@@ -445,7 +544,9 @@ const MitraDashboard = ({ onLogout }: MitraDashboardProps) => {
               onClick={() => setCurrentView("history")}
             >
               <History className="h-6 w-6 mb-2 text-blue-600" />
-              <span className="font-medium">Riwayat Pesanan</span>
+              <span className="font-black text-black" style={{ fontFamily: 'Arial Black', fontSize: '12pt' }}>
+                Riwayat Pesanan
+              </span>
             </Button>
 
             <Button
@@ -454,8 +555,64 @@ const MitraDashboard = ({ onLogout }: MitraDashboardProps) => {
               onClick={() => setCurrentView("chat")}
             >
               <MessageCircle className="h-6 w-6 mb-2 text-purple-600" />
-              <span className="font-medium">Live Chat Admin</span>
+              <span className="font-black text-black" style={{ fontFamily: 'Arial Black', fontSize: '12pt' }}>
+                Live Chat Admin
+              </span>
             </Button>
+          </div>
+
+          {/* Q&A Section */}
+          <div className="px-6 mt-8 mb-8">
+            <Card className="bg-white/80 backdrop-blur-sm shadow-xl">
+              <CardHeader>
+                <CardTitle className="text-center text-xl font-black text-gray-800" style={{ fontFamily: 'Arial Black' }}>
+                  Mengapa Pilih GetLife?
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  <div className="p-4 bg-emerald-50 rounded-lg">
+                    <h4 className="font-black text-emerald-800 mb-2" style={{ fontFamily: 'Arial Black', fontSize: '12pt' }}>
+                      💼 Penghasilan Tambahan Terpercaya
+                    </h4>
+                    <p className="text-sm text-gray-700">
+                      Dapatkan penghasilan tambahan dengan sistem pembayaran yang jelas dan transparan
+                    </p>
+                  </div>
+                  <div className="p-4 bg-blue-50 rounded-lg">
+                    <h4 className="font-black text-blue-800 mb-2" style={{ fontFamily: 'Arial Black', fontSize: '12pt' }}>
+                      🤝 Platform Terpercaya
+                    </h4>
+                    <p className="text-sm text-gray-700">
+                      Bergabung dengan platform yang telah dipercaya ribuan mitra di seluruh Indonesia
+                    </p>
+                  </div>
+                  <div className="p-4 bg-purple-50 rounded-lg">
+                    <h4 className="font-black text-purple-800 mb-2" style={{ fontFamily: 'Arial Black', fontSize: '12pt' }}>
+                      📱 Mudah Digunakan
+                    </h4>
+                    <p className="text-sm text-gray-700">
+                      Interface yang user-friendly dan sistem yang mudah dipahami untuk semua kalangan
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Footer */}
+          <div className="bg-gradient-to-r from-gray-800 to-gray-900 text-white p-6 mt-8">
+            <div className="text-center space-y-3">
+              <h3 className="text-xl font-black" style={{ fontFamily: 'Arial Black' }}>
+                GetLife Indonesia
+              </h3>
+              <div className="space-y-2 text-sm">
+                <p>📧 id.getlifee@gmail.com</p>
+                <p>📲 081299660660</p>
+                <p>🏢 Kabupaten Bandung - Jawa Barat</p>
+                <p>👨‍💼 Admin - Arvin Erlangga</p>
+              </div>
+            </div>
           </div>
 
           {/* Info */}
