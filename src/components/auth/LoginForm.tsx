@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -112,14 +113,6 @@ const LoginForm = ({ onBack, onLoginSuccess }: LoginFormProps) => {
               {loading ? "Memproses..." : "Masuk"}
             </Button>
           </form>
-
-          {/* Demo Accounts Info */}
-          <div className="mt-6 p-3 bg-muted/50 rounded-lg">
-            <p className="text-sm font-medium mb-2">Akun Demo:</p>
-            <div className="text-xs space-y-1">
-              <p><strong>Admin:</strong> id.getlife@gmail.com / Bandung123</p>
-            </div>
-          </div>
         </CardContent>
       </Card>
     </div>
