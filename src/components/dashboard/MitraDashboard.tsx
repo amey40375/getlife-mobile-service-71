@@ -5,10 +5,15 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { LogOut, Clock, Play, Square, MessageCircle, History, CreditCard, Plus, Upload, Eye, EyeOff } from "lucide-react";
+import { LogOut, Clock, Play, Square, MessageCircle, History, CreditCard, Plus, Upload, Eye, EyeOff, TrendingUp } from "lucide-react";
 import { storage, Profile, Order, ChatMessage } from "@/lib/storage";
 import { auth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
+import EarningsModal from "./EarningsModal";
+import NotificationDropdown from "./NotificationDropdown";
+import ScrollingText from "./ScrollingText";
+import MitraStatistics from "./MitraStatistics";
+import "../dashboard/scrolling-text.css";
 
 interface MitraDashboardProps {
   onLogout: () => void;
@@ -31,6 +36,7 @@ const MitraDashboard = ({ onLogout }: MitraDashboardProps) => {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [showBalance, setShowBalance] = useState(true);
+  const [showEarningsModal, setShowEarningsModal] = useState(false);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
 
@@ -402,10 +408,13 @@ const MitraDashboard = ({ onLogout }: MitraDashboardProps) => {
                 GetLife
               </h1>
             </div>
-            <Button variant="outline" onClick={onLogout} className="hover:bg-red-50 hover:text-red-600 hover:border-red-200">
-              <LogOut className="h-4 w-4 mr-2" />
-              Logout
-            </Button>
+            <div className="flex items-center gap-3">
+              <NotificationDropdown userEmail={mitraProfile.email} userRole="mitra" />
+              <Button variant="outline" onClick={onLogout} className="hover:bg-red-50 hover:text-red-600 hover:border-red-200">
+                <LogOut className="h-4 w-4 mr-2" />
+                Logout
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -415,7 +424,7 @@ const MitraDashboard = ({ onLogout }: MitraDashboardProps) => {
             <CardContent className="p-6">
               <div className="flex justify-between items-center">
                 <div className="space-y-1">
-                  <p className="text-xs text-white whitespace-nowrap" style={{ fontFamily: 'Arial Black', fontSize: '10pt' }}>
+                  <p className="text-xs text-white" style={{ fontFamily: 'Arial Black', fontSize: '10pt' }}>
                     Halo, {mitraProfile.name}!
                   </p>
                   <p className="text-xs text-white" style={{ fontFamily: 'Arial Black', fontSize: '10pt' }}>
@@ -437,7 +446,7 @@ const MitraDashboard = ({ onLogout }: MitraDashboardProps) => {
                 </div>
                 <Button 
                   onClick={() => setShowTopupModal(true)}
-                  className="bg-white text-black hover:bg-gray-100 shadow-lg hover:shadow-xl transition-all duration-300 px-4 py-2 font-black"
+                  className="bg-white text-black hover:bg-gray-100 shadow-lg hover:shadow-xl transition-all duration-300 px-3 py-2 font-black"
                   style={{ fontFamily: 'Arial Black', fontSize: '10pt' }}
                 >
                   <Plus className="h-4 w-4 mr-1" />
@@ -447,6 +456,9 @@ const MitraDashboard = ({ onLogout }: MitraDashboardProps) => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Scrolling Text */}
+        <ScrollingText />
 
         {/* Banner Carousel */}
         <div className="px-6 mb-6">
@@ -513,6 +525,11 @@ const MitraDashboard = ({ onLogout }: MitraDashboardProps) => {
           </div>
         )}
 
+        {/* Statistics */}
+        <div className="px-6">
+          <MitraStatistics mitraEmail={mitraProfile.email} />
+        </div>
+
         {/* Orders Sections */}
         <div className="px-6 space-y-6">
           {/* Pesanan Masuk */}
@@ -578,7 +595,7 @@ const MitraDashboard = ({ onLogout }: MitraDashboardProps) => {
           )}
 
           {/* Menu Grid */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4 mb-6">
             <Button
               variant="outline"
               className="h-20 flex-col bg-white/70 backdrop-blur-sm hover:bg-blue-50 hover:border-blue-200 transition-all duration-300 shadow-lg hover:shadow-xl"
@@ -600,49 +617,41 @@ const MitraDashboard = ({ onLogout }: MitraDashboardProps) => {
                 Live Chat Admin
               </span>
             </Button>
+
+            <Button
+              variant="outline"
+              className="h-20 flex-col bg-white/70 backdrop-blur-sm hover:bg-green-50 hover:border-green-200 transition-all duration-300 shadow-lg hover:shadow-xl"
+              onClick={() => setShowEarningsModal(true)}
+            >
+              <TrendingUp className="h-6 w-6 mb-2 text-green-600" />
+              <span className="font-black text-black" style={{ fontFamily: 'Arial Black', fontSize: '12pt' }}>
+                Lihat Pendapatan
+              </span>
+            </Button>
           </div>
 
-          {/* Q&A Section */}
-          <div className="px-6 mt-8 mb-8">
-            <Card className="bg-white/80 backdrop-blur-sm shadow-xl">
-              <CardHeader>
-                <CardTitle className="text-center text-xl font-black text-gray-800" style={{ fontFamily: 'Arial Black' }}>
-                  Mengapa Pilih GetLife?
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3">
-                  <div className="p-4 bg-emerald-50 rounded-lg">
-                    <h4 className="font-black text-emerald-800 mb-2" style={{ fontFamily: 'Arial Black', fontSize: '12pt' }}>
-                      💼 Penghasilan Tambahan Terpercaya
-                    </h4>
-                    <p className="text-sm text-gray-700">
-                      Dapatkan penghasilan tambahan dengan sistem pembayaran yang jelas dan transparan
-                    </p>
-                  </div>
-                  <div className="p-4 bg-blue-50 rounded-lg">
-                    <h4 className="font-black text-blue-800 mb-2" style={{ fontFamily: 'Arial Black', fontSize: '12pt' }}>
-                      🤝 Platform Terpercaya
-                    </h4>
-                    <p className="text-sm text-gray-700">
-                      Bergabung dengan platform yang telah dipercaya ribuan mitra di seluruh Indonesia
-                    </p>
-                  </div>
-                  <div className="p-4 bg-purple-50 rounded-lg">
-                    <h4 className="font-black text-purple-800 mb-2" style={{ fontFamily: 'Arial Black', fontSize: '12pt' }}>
-                      📱 Mudah Digunakan
-                    </h4>
-                    <p className="text-sm text-gray-700">
-                      Interface yang user-friendly dan sistem yang mudah dipahami untuk semua kalangan
-                    </p>
-                  </div>
+          {/* Small Side Q&A */}
+          <div className="grid grid-cols-3 gap-4 mb-6">
+            <Card className="col-span-2 bg-white/80 backdrop-blur-sm shadow-lg">
+              <CardContent className="p-4">
+                <h3 className="font-bold text-gray-800 mb-2">Tips Sukses Mitra GetLife</h3>
+                <div className="space-y-2 text-sm">
+                  <p>• Selalu tiba tepat waktu</p>
+                  <p>• Berikan pelayanan terbaik</p>
+                  <p>• Jaga komunikasi dengan pelanggan</p>
                 </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-emerald-50 border-emerald-200 shadow-lg">
+              <CardContent className="p-4 text-center">
+                <div className="text-2xl mb-2">🏆</div>
+                <p className="text-sm font-medium text-emerald-700">Mitra Terbaik</p>
               </CardContent>
             </Card>
           </div>
 
           {/* Footer */}
-          <div className="bg-gradient-to-r from-gray-800 to-gray-900 text-white p-6 mt-8">
+          <div className="bg-gradient-to-r from-gray-800 to-gray-900 text-white p-6 mt-8 rounded-xl">
             <div className="text-center space-y-3">
               <h3 className="text-xl font-black" style={{ fontFamily: 'Arial Black' }}>
                 GetLife Indonesia
@@ -665,6 +674,14 @@ const MitraDashboard = ({ onLogout }: MitraDashboardProps) => {
             </Card>
           )}
         </div>
+
+        {/* Earnings Modal */}
+        <EarningsModal
+          isOpen={showEarningsModal}
+          onClose={() => setShowEarningsModal(false)}
+          userEmail={mitraProfile.email}
+          userRole="mitra"
+        />
 
         {/* Top-up Modal */}
         <Dialog open={showTopupModal} onOpenChange={setShowTopupModal}>

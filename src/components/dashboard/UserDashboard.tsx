@@ -7,10 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
-import { LogOut, Plus, History, MessageCircle, ShoppingCart, Settings, MapPin, HelpCircle, CreditCard, Upload, Sparkles, Scissors, Heart, Eye, EyeOff } from "lucide-react";
+import { LogOut, Plus, History, MessageCircle, ShoppingCart, Settings, MapPin, HelpCircle, CreditCard, Upload, Sparkles, Scissors, Heart, Eye, EyeOff, TrendingUp } from "lucide-react";
 import { storage, Profile, Order, ChatMessage } from "@/lib/storage";
 import { auth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
+import EarningsModal from "./EarningsModal";
+import NotificationDropdown from "./NotificationDropdown";
+import ScrollingText from "./ScrollingText";
 
 interface UserDashboardProps {
   onLogout: () => void;
@@ -31,6 +34,7 @@ const UserDashboard = ({ onLogout }: UserDashboardProps) => {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [showBalance, setShowBalance] = useState(true);
+  const [showEarningsModal, setShowEarningsModal] = useState(false);
   const { toast } = useToast();
 
   const banners = [
@@ -81,7 +85,6 @@ const UserDashboard = ({ onLogout }: UserDashboardProps) => {
   useEffect(() => {
     loadData();
     
-    // Auto slide banner every 4 seconds
     const interval = setInterval(() => {
       setCurrentBanner((prev) => (prev + 1) % banners.length);
     }, 4000);
@@ -102,7 +105,6 @@ const UserDashboard = ({ onLogout }: UserDashboardProps) => {
       const mitraProfiles = allProfiles.filter(p => p.role === 'mitra' && p.status === 'verified');
       setMitras(mitraProfiles);
       
-      // Load chat messages
       const messages = storage.getChatMessages();
       const userMessages = messages.filter(m => 
         m.senderId === currentUser.email || m.receiverId === currentUser.email
@@ -228,7 +230,7 @@ const UserDashboard = ({ onLogout }: UserDashboardProps) => {
     const message: ChatMessage = {
       id: Date.now().toString(),
       senderId: userProfile.email,
-      receiverId: 'id.getlife@gmail.com', // Admin email
+      receiverId: 'id.getlife@gmail.com',
       senderName: userProfile.name,
       message: newMessage.trim(),
       timestamp: new Date().toISOString()
@@ -263,10 +265,13 @@ const UserDashboard = ({ onLogout }: UserDashboardProps) => {
                 GetLife
               </h1>
             </div>
-            <Button variant="outline" onClick={onLogout} className="hover:bg-red-50 hover:text-red-600 hover:border-red-200">
-              <LogOut className="h-4 w-4 mr-2" />
-              Logout
-            </Button>
+            <div className="flex items-center gap-3">
+              <NotificationDropdown userEmail={userProfile.email} userRole="user" />
+              <Button variant="outline" onClick={onLogout} className="hover:bg-red-50 hover:text-red-600 hover:border-red-200">
+                <LogOut className="h-4 w-4 mr-2" />
+                Logout
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -276,7 +281,7 @@ const UserDashboard = ({ onLogout }: UserDashboardProps) => {
             <CardContent className="p-6">
               <div className="flex justify-between items-center">
                 <div className="space-y-1">
-                  <p className="text-xs text-white whitespace-nowrap" style={{ fontFamily: 'Arial Black', fontSize: '10pt' }}>
+                  <p className="text-xs text-white" style={{ fontFamily: 'Arial Black', fontSize: '10pt' }}>
                     Halo, {userProfile.name}!
                   </p>
                   <p className="text-xs text-white" style={{ fontFamily: 'Arial Black', fontSize: '10pt' }}>
@@ -298,7 +303,7 @@ const UserDashboard = ({ onLogout }: UserDashboardProps) => {
                 </div>
                 <Button 
                   onClick={() => setShowTopupModal(true)}
-                  className="bg-white text-black hover:bg-gray-100 shadow-lg hover:shadow-xl transition-all duration-300 px-4 py-2 font-black"
+                  className="bg-white text-black hover:bg-gray-100 shadow-lg hover:shadow-xl transition-all duration-300 px-3 py-2 font-black"
                   style={{ fontFamily: 'Arial Black', fontSize: '10pt' }}
                 >
                   <Plus className="h-4 w-4 mr-1" />
@@ -308,6 +313,9 @@ const UserDashboard = ({ onLogout }: UserDashboardProps) => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Scrolling Text */}
+        <ScrollingText />
 
         {/* Banner Carousel */}
         <div className="px-6 mb-6">
@@ -336,7 +344,6 @@ const UserDashboard = ({ onLogout }: UserDashboardProps) => {
               ))}
             </div>
             
-            {/* Banner indicators */}
             <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex space-x-2">
               {banners.map((_, index) => (
                 <div
@@ -421,6 +428,19 @@ const UserDashboard = ({ onLogout }: UserDashboardProps) => {
               </span>
             </Button>
           </div>
+
+          <div className="grid grid-cols-1 gap-4">
+            <Button
+              variant="outline"
+              className="h-20 flex-col bg-white/70 backdrop-blur-sm hover:bg-green-50 hover:border-green-200 transition-all duration-300 shadow-lg hover:shadow-xl"
+              onClick={() => setShowEarningsModal(true)}
+            >
+              <TrendingUp className="h-6 w-6 mb-2 text-green-600" />
+              <span className="font-black text-black text-center text-xs" style={{ fontFamily: 'Arial Black' }}>
+                Lihat Pengeluaran
+              </span>
+            </Button>
+          </div>
         </div>
 
         {/* Q&A Section */}
@@ -476,6 +496,14 @@ const UserDashboard = ({ onLogout }: UserDashboardProps) => {
             </div>
           </div>
         </div>
+
+        {/* Earnings Modal */}
+        <EarningsModal
+          isOpen={showEarningsModal}
+          onClose={() => setShowEarningsModal(false)}
+          userEmail={userProfile.email}
+          userRole="user"
+        />
 
         {/* Top-up Modal */}
         <Dialog open={showTopupModal} onOpenChange={setShowTopupModal}>

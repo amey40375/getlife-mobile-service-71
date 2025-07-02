@@ -6,10 +6,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { LogOut, Users, UserCheck, CreditCard, FileText, Shield, Eye, X, Check, MessageCircle } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { LogOut, Users, UserCheck, CreditCard, FileText, Shield, Eye, X, Check, MessageCircle, TrendingUp, Image, AlertTriangle, Type } from "lucide-react";
 import { storage, MitraApplication, Profile, Transaction, ChatMessage } from "@/lib/storage";
 import { auth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
+import EarningsModal from "./EarningsModal";
+import NotificationDropdown from "./NotificationDropdown";
 
 interface AdminDashboardProps {
   onLogout: () => void;
@@ -33,6 +36,15 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [selectedChat, setSelectedChat] = useState<string>("");
   const [newMessage, setNewMessage] = useState("");
+  const [showEarningsModal, setShowEarningsModal] = useState(false);
+  const [showBannerModal, setShowBannerModal] = useState(false);
+  const [showWarningModal, setShowWarningModal] = useState(false);
+  const [showScrollingTextModal, setShowScrollingTextModal] = useState(false);
+  const [newBannerTitle, setNewBannerTitle] = useState("");
+  const [newBannerSubtitle, setNewBannerSubtitle] = useState("");
+  const [newBannerImage, setNewBannerImage] = useState("");
+  const [warningMessage, setWarningMessage] = useState("");
+  const [scrollingText, setScrollingText] = useState("");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -46,7 +58,6 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
     setTransactions(allTransactions.filter(t => t.status === 'pending'));
     setTopupHistory(allTransactions.filter(t => t.status !== 'pending'));
     
-    // Load chat messages
     const messages = storage.getChatMessages();
     setChatMessages(messages);
   };
@@ -61,7 +72,6 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
       return;
     }
 
-    // Create user account
     const users = storage.getUsers();
     const newUser = {
       email: verificationData.email,
@@ -70,7 +80,6 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
     };
     storage.setUsers([...users, newUser]);
 
-    // Create profile
     const newProfile = {
       email: verificationData.email,
       name: verificationData.name,
@@ -83,7 +92,6 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
     };
     storage.setProfiles([...profiles, newProfile]);
 
-    // Update application status
     const updatedApps = applications.map(app =>
       app.id === selectedApp.id ? { ...app, status: 'approved' as const } : app
     );
@@ -137,14 +145,12 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
   };
 
   const handleConfirmTopup = (transaction: Transaction) => {
-    // Update transaction status to approved
     const allTransactions = storage.getTransactions();
     const updatedTransactions = allTransactions.map(t =>
       t.id === transaction.id ? { ...t, status: 'approved' as const } : t
     );
     storage.setTransactions(updatedTransactions);
 
-    // Add saldo to user
     const updatedProfiles = profiles.map(profile =>
       profile.email === transaction.userId
         ? { ...profile, saldo: profile.saldo + transaction.amount }
@@ -161,7 +167,6 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
   };
 
   const handleRejectTopup = (transaction: Transaction) => {
-    // Update transaction status to rejected
     const allTransactions = storage.getTransactions();
     const updatedTransactions = allTransactions.map(t =>
       t.id === transaction.id ? { ...t, status: 'rejected' as const } : t
@@ -174,6 +179,68 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
     });
 
     loadData();
+  };
+
+  const handleAddBanner = () => {
+    if (!newBannerTitle || !newBannerSubtitle) {
+      toast({
+        variant: "destructive",
+        title: "Data tidak lengkap",
+        description: "Harap lengkapi judul dan subtitle banner"
+      });
+      return;
+    }
+
+    // In real app, this would save to storage
+    toast({
+      title: "Banner berhasil ditambahkan",
+      description: "Banner baru telah ditambahkan ke sistem"
+    });
+
+    setNewBannerTitle("");
+    setNewBannerSubtitle("");
+    setNewBannerImage("");
+    setShowBannerModal(false);
+  };
+
+  const handleSendWarning = () => {
+    if (!warningMessage.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Pesan kosong",
+        description: "Masukkan pesan peringatan"
+      });
+      return;
+    }
+
+    // In real app, this would send notifications to all users
+    toast({
+      title: "Peringatan terkirim",
+      description: "Peringatan telah dikirim ke semua pengguna"
+    });
+
+    setWarningMessage("");
+    setShowWarningModal(false);
+  };
+
+  const handleUpdateScrollingText = () => {
+    if (!scrollingText.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Teks kosong",
+        description: "Masukkan teks berjalan"
+      });
+      return;
+    }
+
+    // In real app, this would save to storage
+    toast({
+      title: "Teks berjalan diperbarui",
+      description: "Teks berjalan telah diperbarui"
+    });
+
+    setScrollingText("");
+    setShowScrollingTextModal(false);
   };
 
   const pendingApplications = applications.filter(app => app.status === 'pending');
@@ -233,10 +300,13 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
           <h1 className="text-2xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
             Admin Dashboard
           </h1>
-          <Button variant="outline" onClick={onLogout}>
-            <LogOut className="h-4 w-4 mr-2" />
-            Logout
-          </Button>
+          <div className="flex items-center gap-3">
+            <NotificationDropdown userEmail="id.getlife@gmail.com" userRole="admin" />
+            <Button variant="outline" onClick={onLogout}>
+              <LogOut className="h-4 w-4 mr-2" />
+              Logout
+            </Button>
+          </div>
         </div>
 
         {/* Stats */}
@@ -336,18 +406,135 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
             <FileText className="h-6 w-6 mb-2" />
             Riwayat Top-Up
           </Button>
-        </div>
 
-        <div className="grid grid-cols-1 gap-4">
           <Button
             variant="outline"
             className="h-20 flex-col"
-            onClick={() => setCurrentView("history")}
+            onClick={() => setShowEarningsModal(true)}
           >
-            <FileText className="h-6 w-6 mb-2" />
-            Riwayat Top-Up
+            <TrendingUp className="h-6 w-6 mb-2" />
+            Lihat Pendapatan
+          </Button>
+
+          <Button
+            variant="outline"
+            className="h-20 flex-col"
+            onClick={() => setShowBannerModal(true)}
+          >
+            <Image className="h-6 w-6 mb-2" />
+            Kelola Banner
+          </Button>
+
+          <Button
+            variant="outline"
+            className="h-20 flex-col"
+            onClick={() => setShowWarningModal(true)}
+          >
+            <AlertTriangle className="h-6 w-6 mb-2" />
+            Kirim Peringatan
+          </Button>
+
+          <Button
+            variant="outline"
+            className="h-20 flex-col"
+            onClick={() => setShowScrollingTextModal(true)}
+          >
+            <Type className="h-6 w-6 mb-2" />
+            Ubah Teks Berjalan
           </Button>
         </div>
+
+        {/* Modals */}
+        <EarningsModal
+          isOpen={showEarningsModal}
+          onClose={() => setShowEarningsModal(false)}
+          userEmail="id.getlife@gmail.com"
+          userRole="admin"
+        />
+
+        {/* Banner Modal */}
+        <Dialog open={showBannerModal} onOpenChange={setShowBannerModal}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Tambah Banner Baru</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label>Judul Banner</Label>
+                <Input
+                  value={newBannerTitle}
+                  onChange={(e) => setNewBannerTitle(e.target.value)}
+                  placeholder="Masukkan judul banner"
+                />
+              </div>
+              <div>
+                <Label>Subtitle Banner</Label>
+                <Input
+                  value={newBannerSubtitle}
+                  onChange={(e) => setNewBannerSubtitle(e.target.value)}
+                  placeholder="Masukkan subtitle banner"
+                />
+              </div>
+              <div>
+                <Label>URL Gambar (Opsional)</Label>
+                <Input
+                  value={newBannerImage}
+                  onChange={(e) => setNewBannerImage(e.target.value)}
+                  placeholder="https://example.com/image.jpg"
+                />
+              </div>
+              <Button onClick={handleAddBanner} className="w-full">
+                Tambah Banner
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Warning Modal */}
+        <Dialog open={showWarningModal} onOpenChange={setShowWarningModal}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Kirim Peringatan ke Semua Pengguna</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label>Pesan Peringatan</Label>
+                <Textarea
+                  value={warningMessage}
+                  onChange={(e) => setWarningMessage(e.target.value)}
+                  placeholder="Masukkan pesan peringatan..."
+                  rows={4}
+                />
+              </div>
+              <Button onClick={handleSendWarning} className="w-full">
+                Kirim Peringatan
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Scrolling Text Modal */}
+        <Dialog open={showScrollingTextModal} onOpenChange={setShowScrollingTextModal}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Ubah Teks Berjalan</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label>Teks Berjalan</Label>
+                <Textarea
+                  value={scrollingText}
+                  onChange={(e) => setScrollingText(e.target.value)}
+                  placeholder="Masukkan teks berjalan yang akan ditampilkan..."
+                  rows={3}
+                />
+              </div>
+              <Button onClick={handleUpdateScrollingText} className="w-full">
+                Perbarui Teks
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Dialogs */}
         <Dialog open={!!selectedApp} onOpenChange={() => setSelectedApp(null)}>
