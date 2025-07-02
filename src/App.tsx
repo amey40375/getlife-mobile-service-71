@@ -20,13 +20,17 @@ const App = () => {
 
   useEffect(() => {
     // Check if user is already logged in
-    const currentUser = auth.getCurrentUser();
-    if (currentUser) {
-      setUserRole(currentUser.role);
-      setCurrentView("dashboard");
-    } else {
-      setCurrentView("landing");
-    }
+    const checkCurrentUser = async () => {
+      const currentUser = await auth.getCurrentUser();
+      if (currentUser) {
+        setUserRole(currentUser.role);
+        setCurrentView("dashboard");
+      } else {
+        setCurrentView("landing");
+      }
+    };
+    
+    checkCurrentUser();
   }, []);
 
   const handleShowLogin = () => setCurrentView("login");
@@ -39,8 +43,8 @@ const App = () => {
     setCurrentView("dashboard");
   };
 
-  const handleLogout = () => {
-    auth.logout();
+  const handleLogout = async () => {
+    await auth.logout();
     setUserRole(null);
     setCurrentView("landing");
   };

@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,7 +39,7 @@ const RegisterUser = ({ onBack, onSuccess }: RegisterUserProps) => {
     }
 
     try {
-      const result = auth.register(formData.email, formData.password, formData.name, 'user');
+      const result = await auth.register(formData.email, formData.password, formData.name, 'user');
       
       if (result.success) {
         toast({

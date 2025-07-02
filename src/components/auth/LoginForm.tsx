@@ -25,7 +25,7 @@ const LoginForm = ({ onBack, onLoginSuccess }: LoginFormProps) => {
     setLoading(true);
 
     try {
-      const result = auth.login(email, password);
+      const result = await auth.login(email, password);
       
       if (result.success && result.user) {
         toast({

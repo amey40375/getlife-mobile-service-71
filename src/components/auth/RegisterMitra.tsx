@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,7 +32,7 @@ const RegisterMitra = ({ onBack, onSuccess }: RegisterMitraProps) => {
     setLoading(true);
 
     try {
-      const applications = storage.getMitraApplications();
+      const applications = await storage.getMitraApplications();
       const newApplication = {
         id: Date.now().toString(),
         nama: formData.nama,
@@ -44,7 +45,7 @@ const RegisterMitra = ({ onBack, onSuccess }: RegisterMitraProps) => {
         createdAt: new Date().toISOString()
       };
 
-      storage.setMitraApplications([...applications, newApplication]);
+      await storage.setMitraApplications([...applications, newApplication]);
       
       toast({
         title: "Pendaftaran berhasil",

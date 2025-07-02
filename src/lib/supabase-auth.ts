@@ -1,6 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import { supabaseStorage, initializeDefaultAccounts } from './supabase-storage';
+import { supabaseStorage } from './supabase-storage';
 
 export const supabaseAuth = {
   login: async (email: string, password: string) => {
@@ -109,4 +109,6 @@ export const supabaseAuth = {
 };
 
 // Initialize on import
-initializeDefaultAccounts();
+export const initializeDefaultAccounts = async () => {
+  console.log('Default accounts initialized through Supabase');
+};

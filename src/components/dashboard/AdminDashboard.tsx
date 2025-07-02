@@ -39,7 +39,7 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
   const [showEarningsModal, setShowEarningsModal] = useState(false);
   const [showBannerModal, setShowBannerModal] = useState(false);
   const [showWarningModal, setShowWarningModal] = useState(false);
-  const [showScrollingTextModal, setShowScrollingTextModal] = useState(false);
+  const [showScrollingTextModal] = useState(false);
   const [newBannerTitle, setNewBannerTitle] = useState("");
   const [newBannerSubtitle, setNewBannerSubtitle] = useState("");
   const [newBannerImage, setNewBannerImage] = useState("");
@@ -51,18 +51,22 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
     loadData();
   }, []);
 
-  const loadData = () => {
-    setApplications(storage.getMitraApplications());
-    setProfiles(storage.getProfiles());
-    const allTransactions = storage.getTransactions();
-    setTransactions(allTransactions.filter(t => t.status === 'pending'));
-    setTopupHistory(allTransactions.filter(t => t.status !== 'pending'));
+  const loadData = async () => {
+    const [apps, profs, trans, messages] = await Promise.all([
+      storage.getMitraApplications(),
+      storage.getProfiles(),
+      storage.getTransactions(),
+      storage.getChatMessages()
+    ]);
     
-    const messages = storage.getChatMessages();
+    setApplications(apps);
+    setProfiles(profs);
+    setTransactions(trans.filter(t => t.status === 'pending'));
+    setTopupHistory(trans.filter(t => t.status !== 'pending'));
     setChatMessages(messages);
   };
 
-  const handleVerifyMitra = () => {
+  const handleVerifyMitra = async () => {
     if (!selectedApp || !verificationData.name || !verificationData.email || !verificationData.password) {
       toast({
         variant: "destructive",
@@ -90,12 +94,12 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
       saldo: 0,
       expertise: selectedApp.expertise
     };
-    storage.setProfiles([...profiles, newProfile]);
+    await storage.setProfiles([...profiles, newProfile]);
 
     const updatedApps = applications.map(app =>
       app.id === selectedApp.id ? { ...app, status: 'approved' as const } : app
     );
-    storage.setMitraApplications(updatedApps);
+    await storage.setMitraApplications(updatedApps);
 
     toast({
       title: "Mitra berhasil dibuat",
@@ -107,7 +111,7 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
     loadData();
   };
 
-  const handleTransferSaldo = () => {
+  const handleTransferSaldo = async () => {
     if (!selectedProfile || !transferAmount) {
       toast({
         variant: "destructive",
@@ -132,7 +136,7 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
         ? { ...profile, saldo: profile.saldo + amount }
         : profile
     );
-    storage.setProfiles(updatedProfiles);
+    await storage.setProfiles(updatedProfiles);
 
     toast({
       title: "Transfer berhasil",
@@ -144,19 +148,19 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
     loadData();
   };
 
-  const handleConfirmTopup = (transaction: Transaction) => {
-    const allTransactions = storage.getTransactions();
+  const handleConfirmTopup = async (transaction: Transaction) => {
+    const allTransactions = await storage.getTransactions();
     const updatedTransactions = allTransactions.map(t =>
       t.id === transaction.id ? { ...t, status: 'approved' as const } : t
     );
-    storage.setTransactions(updatedTransactions);
+    await storage.setTransactions(updatedTransactions);
 
     const updatedProfiles = profiles.map(profile =>
       profile.email === transaction.userId
         ? { ...profile, saldo: profile.saldo + transaction.amount }
         : profile
     );
-    storage.setProfiles(updatedProfiles);
+    await storage.setProfiles(updatedProfiles);
 
     toast({
       title: "Top-up dikonfirmasi",
@@ -166,12 +170,12 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
     loadData();
   };
 
-  const handleRejectTopup = (transaction: Transaction) => {
-    const allTransactions = storage.getTransactions();
+  const handleRejectTopup = async (transaction: Transaction) => {
+    const allTransactions = await storage.getTransactions();
     const updatedTransactions = allTransactions.map(t =>
       t.id === transaction.id ? { ...t, status: 'rejected' as const } : t
     );
-    storage.setTransactions(updatedTransactions);
+    await storage.setTransactions(updatedTransactions);
 
     toast({
       title: "Top-up ditolak",
@@ -266,7 +270,7 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
     );
   };
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!newMessage.trim() || !selectedChat) return;
 
     const adminProfile = profiles.find(p => p.role === 'admin');
@@ -281,8 +285,8 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
       timestamp: new Date().toISOString()
     };
 
-    const allMessages = storage.getChatMessages();
-    storage.setChatMessages([...allMessages, message]);
+    const allMessages = await storage.getChatMessages();
+    await storage.setChatMessages([...allMessages, message]);
     setChatMessages([...allMessages, message]);
     setNewMessage("");
 
@@ -671,7 +675,7 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
 
       {currentView === "applications" && (
         <div className="space-y-4">
-          {pendingApplications.map((app) => (
+          {applications.map((app) => (
             <Card key={app.id} className="cursor-pointer hover:shadow-lg transition-shadow">
               <CardContent className="p-4" onClick={() => setSelectedApp(app)}>
                 <div className="flex justify-between items-start">
@@ -866,7 +870,7 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
                   );
                 })}
                 {getUniqueChats().length === 0 && (
-                  <p className="text-center text-muted-foreground">Belum ada chat</p>
+                  <p className="text-center text-muted-foreground">Belum ada pesan</p>
                 )}
               </div>
             </CardContent>
@@ -882,45 +886,42 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {selectedChat ? (
-                <>
-                  <div className="h-96 overflow-y-auto border rounded-lg p-4 space-y-3">
-                    {getChatMessages(selectedChat).map((message) => (
-                      <div
-                        key={message.id}
-                        className={`flex ${message.senderId === 'id.getlife@gmail.com' ? 'justify-end' : 'justify-start'}`}
-                      >
-                        <div
-                          className={`max-w-xs px-4 py-2 rounded-lg ${
-                            message.senderId === 'id.getlife@gmail.com'
-                              ? 'bg-blue-500 text-white'
-                              : 'bg-gray-200 text-black'
-                          }`}
-                        >
-                          <p className="text-sm">{message.message}</p>
-                          <p className="text-xs opacity-70 mt-1">
-                            {new Date(message.timestamp).toLocaleTimeString()}
-                          </p>
-                        </div>
-                      </div>
-                    ))}
+              <div className="h-96 overflow-y-auto border rounded-lg p-4 space-y-3">
+                {selectedChat && getChatMessages(selectedChat).map((message) => (
+                  <div
+                    key={message.id}
+                    className={`flex ${message.senderId === 'id.getlife@gmail.com' ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div
+                      className={`max-w-xs px-4 py-2 rounded-lg ${
+                        message.senderId === 'id.getlife@gmail.com'
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-gray-200 text-black'
+                      }`}
+                    >
+                      <p className="text-sm">{message.message}</p>
+                      <p className="text-xs opacity-70 mt-1">
+                        {new Date(message.timestamp).toLocaleTimeString()}
+                      </p>
+                    </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Input
-                      value={newMessage}
-                      onChange={(e) => setNewMessage(e.target.value)}
-                      placeholder="Ketik pesan..."
-                      onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                    />
-                    <Button onClick={handleSendMessage} disabled={!newMessage.trim()}>
-                      Kirim
-                    </Button>
-                  </div>
-                </>
-              ) : (
-                <p className="text-center text-muted-foreground py-8">
-                  Pilih chat untuk memulai percakapan
-                </p>
+                ))}
+                {!selectedChat && (
+                  <p className="text-center text-muted-foreground">Pilih chat untuk mulai percakapan</p>
+                )}
+              </div>
+              {selectedChat && (
+                <div className="flex gap-2">
+                  <Input
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    placeholder="Ketik pesan..."
+                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                  />
+                  <Button onClick={handleSendMessage} disabled={!newMessage.trim()}>
+                    Kirim
+                  </Button>
+                </div>
               )}
             </CardContent>
           </Card>
