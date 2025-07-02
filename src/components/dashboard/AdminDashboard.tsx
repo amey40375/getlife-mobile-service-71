@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,8 +6,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { LogOut, Users, UserCheck, CreditCard, FileText, Shield, Eye, X, Check } from "lucide-react";
-import { storage, MitraApplication, Profile, Transaction } from "@/lib/storage";
+import { LogOut, Users, UserCheck, CreditCard, FileText, Shield, Eye, X, Check, MessageCircle } from "lucide-react";
+import { storage, MitraApplication, Profile, Transaction, ChatMessage } from "@/lib/storage";
 import { auth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 
@@ -31,6 +30,9 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
   });
   const [transferAmount, setTransferAmount] = useState("");
   const [currentView, setCurrentView] = useState("main");
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [selectedChat, setSelectedChat] = useState<string>("");
+  const [newMessage, setNewMessage] = useState("");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -43,6 +45,10 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
     const allTransactions = storage.getTransactions();
     setTransactions(allTransactions.filter(t => t.status === 'pending'));
     setTopupHistory(allTransactions.filter(t => t.status !== 'pending'));
+    
+    // Load chat messages
+    const messages = storage.getChatMessages();
+    setChatMessages(messages);
   };
 
   const handleVerifyMitra = () => {
@@ -173,6 +179,52 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
   const pendingApplications = applications.filter(app => app.status === 'pending');
   const pendingTopups = transactions.filter(t => t.status === 'pending' && t.type === 'topup');
 
+  const getUniqueChats = () => {
+    const chats = new Set<string>();
+    chatMessages.forEach(message => {
+      if (message.senderId !== 'id.getlife@gmail.com') {
+        chats.add(message.senderId);
+      }
+      if (message.receiverId !== 'id.getlife@gmail.com') {
+        chats.add(message.receiverId);
+      }
+    });
+    return Array.from(chats);
+  };
+
+  const getChatMessages = (userId: string) => {
+    return chatMessages.filter(m => 
+      (m.senderId === userId && m.receiverId === 'id.getlife@gmail.com') ||
+      (m.senderId === 'id.getlife@gmail.com' && m.receiverId === userId)
+    );
+  };
+
+  const handleSendMessage = () => {
+    if (!newMessage.trim() || !selectedChat) return;
+
+    const adminProfile = profiles.find(p => p.role === 'admin');
+    if (!adminProfile) return;
+
+    const message: ChatMessage = {
+      id: Date.now().toString(),
+      senderId: 'id.getlife@gmail.com',
+      receiverId: selectedChat,
+      senderName: 'Admin GetLife',
+      message: newMessage.trim(),
+      timestamp: new Date().toISOString()
+    };
+
+    const allMessages = storage.getChatMessages();
+    storage.setChatMessages([...allMessages, message]);
+    setChatMessages([...allMessages, message]);
+    setNewMessage("");
+
+    toast({
+      title: "Pesan terkirim",
+      description: "Pesan Anda telah dikirim"
+    });
+  };
+
   if (currentView === "main") {
     return (
       <div className="min-h-screen bg-gradient-to-br from-background to-muted p-4">
@@ -260,6 +312,29 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
                 {pendingTopups.length}
               </Badge>
             )}
+          </Button>
+
+          <Button
+            variant="outline"
+            className="h-20 flex-col"
+            onClick={() => setCurrentView("chat")}
+          >
+            <MessageCircle className="h-6 w-6 mb-2" />
+            Live Chat
+            {getUniqueChats().length > 0 && (
+              <Badge variant="destructive" className="mt-1">
+                {getUniqueChats().length}
+              </Badge>
+            )}
+          </Button>
+
+          <Button
+            variant="outline"
+            className="h-20 flex-col"
+            onClick={() => setCurrentView("history")}
+          >
+            <FileText className="h-6 w-6 mb-2" />
+            Riwayat Top-Up
           </Button>
         </div>
 
@@ -403,6 +478,7 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
           {currentView === "transfer" && "Transfer Saldo"}
           {currentView === "topups" && "Permintaan Top-Up"}
           {currentView === "history" && "Riwayat Top-Up"}
+          {currentView === "chat" && "Live Chat"}
         </h1>
       </div>
 
@@ -575,6 +651,89 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
               </Table>
               {topupHistory.length === 0 && (
                 <p className="text-center text-muted-foreground py-8">Belum ada riwayat top-up</p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {currentView === "chat" && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Daftar Chat</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {getUniqueChats().map((userId) => {
+                  const user = profiles.find(p => p.email === userId);
+                  return (
+                    <Button
+                      key={userId}
+                      variant={selectedChat === userId ? "default" : "outline"}
+                      className="w-full justify-start"
+                      onClick={() => setSelectedChat(userId)}
+                    >
+                      {user?.name || userId}
+                    </Button>
+                  );
+                })}
+                {getUniqueChats().length === 0 && (
+                  <p className="text-center text-muted-foreground">Belum ada chat</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="md:col-span-2">
+            <CardHeader>
+              <CardTitle>
+                {selectedChat ? 
+                  `Chat dengan ${profiles.find(p => p.email === selectedChat)?.name || selectedChat}` : 
+                  'Pilih Chat'
+                }
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {selectedChat ? (
+                <>
+                  <div className="h-96 overflow-y-auto border rounded-lg p-4 space-y-3">
+                    {getChatMessages(selectedChat).map((message) => (
+                      <div
+                        key={message.id}
+                        className={`flex ${message.senderId === 'id.getlife@gmail.com' ? 'justify-end' : 'justify-start'}`}
+                      >
+                        <div
+                          className={`max-w-xs px-4 py-2 rounded-lg ${
+                            message.senderId === 'id.getlife@gmail.com'
+                              ? 'bg-blue-500 text-white'
+                              : 'bg-gray-200 text-black'
+                          }`}
+                        >
+                          <p className="text-sm">{message.message}</p>
+                          <p className="text-xs opacity-70 mt-1">
+                            {new Date(message.timestamp).toLocaleTimeString()}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <Input
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      placeholder="Ketik pesan..."
+                      onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                    />
+                    <Button onClick={handleSendMessage} disabled={!newMessage.trim()}>
+                      Kirim
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <p className="text-center text-muted-foreground py-8">
+                  Pilih chat untuk memulai percakapan
+                </p>
               )}
             </CardContent>
           </Card>

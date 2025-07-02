@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { LogOut, Plus, History, MessageCircle, ShoppingCart, Settings, MapPin, HelpCircle, CreditCard, Upload, Sparkles, Scissors, Heart } from "lucide-react";
-import { storage, Profile, Order } from "@/lib/storage";
+import { storage, Profile, Order, ChatMessage } from "@/lib/storage";
 import { auth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 
@@ -28,6 +28,8 @@ const UserDashboard = ({ onLogout }: UserDashboardProps) => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [transferProof, setTransferProof] = useState<File | null>(null);
   const [currentBanner, setCurrentBanner] = useState(0);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [newMessage, setNewMessage] = useState("");
   const { toast } = useToast();
 
   const banners = [
@@ -98,6 +100,13 @@ const UserDashboard = ({ onLogout }: UserDashboardProps) => {
       const allProfiles = storage.getProfiles();
       const mitraProfiles = allProfiles.filter(p => p.role === 'mitra' && p.status === 'verified');
       setMitras(mitraProfiles);
+      
+      // Load chat messages
+      const messages = storage.getChatMessages();
+      const userMessages = messages.filter(m => 
+        m.senderId === currentUser.email || m.receiverId === currentUser.email
+      );
+      setChatMessages(userMessages);
     }
   };
 
@@ -212,6 +221,29 @@ const UserDashboard = ({ onLogout }: UserDashboardProps) => {
     loadData();
   };
 
+  const handleSendMessage = () => {
+    if (!newMessage.trim() || !userProfile) return;
+
+    const message: ChatMessage = {
+      id: Date.now().toString(),
+      senderId: userProfile.email,
+      receiverId: 'id.getlife@gmail.com', // Admin email
+      senderName: userProfile.name,
+      message: newMessage.trim(),
+      timestamp: new Date().toISOString()
+    };
+
+    const allMessages = storage.getChatMessages();
+    storage.setChatMessages([...allMessages, message]);
+    setChatMessages([...chatMessages, message]);
+    setNewMessage("");
+
+    toast({
+      title: "Pesan terkirim",
+      description: "Pesan Anda telah dikirim ke admin"
+    });
+  };
+
   if (!userProfile) {
     return <div>Loading...</div>;
   }
@@ -243,17 +275,15 @@ const UserDashboard = ({ onLogout }: UserDashboardProps) => {
             <CardContent className="p-6">
               <div className="flex justify-between items-center">
                 <div className="space-y-1">
-                  <p className="text-lg font-black text-black" style={{ fontFamily: 'Arial Black', fontSize: '12pt' }}>
+                  <p className="text-xs text-black" style={{ fontFamily: 'Arial', fontSize: '10pt' }}>
                     Halo, {userProfile.name}!
                   </p>
-                  <div className="flex items-baseline space-x-2">
-                    <span className="text-sm text-black font-black" style={{ fontFamily: 'Arial Black', fontSize: '12pt' }}>
-                      Saldo Anda
-                    </span>
-                    <p className="text-3xl font-black text-black" style={{ fontFamily: 'Arial Black' }}>
-                      Rp.{userProfile.saldo.toLocaleString()},-
-                    </p>
-                  </div>
+                  <p className="text-xs text-black" style={{ fontFamily: 'Arial', fontSize: '10pt' }}>
+                    Saldo Anda :
+                  </p>
+                  <p className="text-lg font-black text-black" style={{ fontFamily: 'Arial Black', fontSize: '10pt' }}>
+                    Rp.{userProfile.saldo.toLocaleString()},-
+                  </p>
                 </div>
                 <Button 
                   onClick={() => setShowTopupModal(true)}
@@ -662,11 +692,50 @@ const UserDashboard = ({ onLogout }: UserDashboardProps) => {
       )}
 
       {currentView === "chat" && (
-        <Card>
-          <CardContent className="p-8 text-center">
-            <p className="text-muted-foreground">Fitur live chat sedang dalam pengembangan</p>
-          </CardContent>
-        </Card>
+        <div className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Live Chat dengan Admin</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="h-96 overflow-y-auto border rounded-lg p-4 space-y-3">
+                {chatMessages.map((message) => (
+                  <div
+                    key={message.id}
+                    className={`flex ${message.senderId === userProfile.email ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div
+                      className={`max-w-xs px-4 py-2 rounded-lg ${
+                        message.senderId === userProfile.email
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-gray-200 text-black'
+                      }`}
+                    >
+                      <p className="text-sm">{message.message}</p>
+                      <p className="text-xs opacity-70 mt-1">
+                        {new Date(message.timestamp).toLocaleTimeString()}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+                {chatMessages.length === 0 && (
+                  <p className="text-center text-muted-foreground">Belum ada pesan</p>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  placeholder="Ketik pesan..."
+                  onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                />
+                <Button onClick={handleSendMessage} disabled={!newMessage.trim()}>
+                  Kirim
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
   );

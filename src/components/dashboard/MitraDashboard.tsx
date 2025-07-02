@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { LogOut, Clock, Play, Square, MessageCircle, History, CreditCard, Plus, Upload } from "lucide-react";
-import { storage, Profile, Order } from "@/lib/storage";
+import { storage, Profile, Order, ChatMessage } from "@/lib/storage";
 import { auth } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 
@@ -28,6 +28,8 @@ const MitraDashboard = ({ onLogout }: MitraDashboardProps) => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [transferProof, setTransferProof] = useState<File | null>(null);
   const [currentBanner, setCurrentBanner] = useState(0);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [newMessage, setNewMessage] = useState("");
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
 
@@ -115,7 +117,14 @@ const MitraDashboard = ({ onLogout }: MitraDashboardProps) => {
       const allOrders = storage.getOrders();
       const mitraOrders = allOrders.filter(order => order.mitraId === currentUser.email);
       setOrders(mitraOrders);
-
+      
+      // Load chat messages
+      const messages = storage.getChatMessages();
+      const mitraMessages = messages.filter(m => 
+        m.senderId === currentUser.email || m.receiverId === currentUser.email
+      );
+      setChatMessages(mitraMessages);
+      
       // Check if blocked
       const blocked = storage.getBlockedAccounts();
       if (blocked.includes(currentUser.email)) {
@@ -357,15 +366,15 @@ const MitraDashboard = ({ onLogout }: MitraDashboardProps) => {
     const activeOrders = orders.filter(order => order.status === 'dikerjakan');
 
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50 to-blue-50">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-emerald-50">
         {/* Header */}
         <div className="bg-white/80 backdrop-blur-sm border-b border-slate-200/50 px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-r from-emerald-600 to-blue-600 rounded-xl flex items-center justify-center">
+              <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-emerald-600 rounded-xl flex items-center justify-center">
                 <span className="text-white font-bold text-lg">G</span>
               </div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-emerald-600 to-blue-600 bg-clip-text text-transparent">
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-emerald-600 bg-clip-text text-transparent">
                 GetLife
               </h1>
             </div>
@@ -382,17 +391,15 @@ const MitraDashboard = ({ onLogout }: MitraDashboardProps) => {
             <CardContent className="p-6">
               <div className="flex justify-between items-center">
                 <div className="space-y-1">
-                  <p className="text-lg font-black text-black" style={{ fontFamily: 'Arial Black', fontSize: '12pt' }}>
+                  <p className="text-xs text-black" style={{ fontFamily: 'Arial', fontSize: '10pt' }}>
                     Halo, {mitraProfile.name}!
                   </p>
-                  <div className="flex items-baseline space-x-2">
-                    <span className="text-sm text-black font-black" style={{ fontFamily: 'Arial Black', fontSize: '12pt' }}>
-                      Saldo Anda
-                    </span>
-                    <p className="text-3xl font-black text-black" style={{ fontFamily: 'Arial Black' }}>
-                      Rp.{mitraProfile.saldo.toLocaleString()},-
-                    </p>
-                  </div>
+                  <p className="text-xs text-black" style={{ fontFamily: 'Arial', fontSize: '10pt' }}>
+                    Saldo Anda :
+                  </p>
+                  <p className="text-lg font-black text-black" style={{ fontFamily: 'Arial Black', fontSize: '10pt' }}>
+                    Rp.{mitraProfile.saldo.toLocaleString()},-
+                  </p>
                 </div>
                 <Button 
                   onClick={() => setShowTopupModal(true)}
@@ -723,11 +730,74 @@ const MitraDashboard = ({ onLogout }: MitraDashboardProps) => {
           ← Kembali
         </Button>
         <h1 className="text-xl font-semibold">
+          {currentView === "orders" && "Pesanan Masuk"}
+          {currentView === "active" && "Sedang Dikerjakan"}
           {currentView === "history" && "Riwayat Pesanan"}
-          {currentView === "chat" && "Live Chat Admin"}
+          {currentView === "chat" && "Live Chat"}
         </h1>
       </div>
 
+      {/* Orders view */}
+      {currentView === "orders" && (
+        <div className="space-y-4">
+          {orders.filter(order => order.status === 'menunggu').map((order) => (
+            <Card key={order.id}>
+              <CardContent className="p-4">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-semibold">{order.service}</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Mulai: {order.createdAt ? new Date(order.createdAt).toLocaleString() : '-'}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Selesai: {order.endTime ? new Date(order.endTime).toLocaleString() : '-'}
+                    </p>
+                    {order.totalCost && (
+                      <p className="text-sm font-medium">Total: Rp{order.totalCost.toLocaleString()}</p>
+                    )}
+                  </div>
+                  <Badge variant="outline">Menunggu</Badge>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+          {orders.filter(order => order.status === 'menunggu').length === 0 && (
+            <p className="text-center text-muted-foreground">Belum ada pesanan masuk</p>
+          )}
+        </div>
+      )}
+
+      {/* Active view */}
+      {currentView === "active" && (
+        <div className="space-y-4">
+          {orders.filter(order => order.status === 'dikerjakan').map((order) => (
+            <Card key={order.id}>
+              <CardContent className="p-4">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-semibold">{order.service}</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Mulai: {order.startTime ? new Date(order.startTime).toLocaleString() : '-'}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Selesai: {order.endTime ? new Date(order.endTime).toLocaleString() : '-'}
+                    </p>
+                    {order.totalCost && (
+                      <p className="text-sm font-medium">Total: Rp{order.totalCost.toLocaleString()}</p>
+                    )}
+                  </div>
+                  <Badge variant="outline">Dikerjakan</Badge>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+          {orders.filter(order => order.status === 'dikerjakan').length === 0 && (
+            <p className="text-center text-muted-foreground">Belum ada pesanan sedang dikerjakan</p>
+          )}
+        </div>
+      )}
+
+      {/* History view */}
       {currentView === "history" && (
         <div className="space-y-4">
           {orders.filter(order => order.status === 'selesai').map((order) => (
@@ -758,11 +828,50 @@ const MitraDashboard = ({ onLogout }: MitraDashboardProps) => {
       )}
 
       {currentView === "chat" && (
-        <Card>
-          <CardContent className="p-8 text-center">
-            <p className="text-muted-foreground">Fitur live chat sedang dalam pengembangan</p>
-          </CardContent>
-        </Card>
+        <div className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Live Chat dengan Admin</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="h-96 overflow-y-auto border rounded-lg p-4 space-y-3">
+                {chatMessages.map((message) => (
+                  <div
+                    key={message.id}
+                    className={`flex ${message.senderId === mitraProfile.email ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div
+                      className={`max-w-xs px-4 py-2 rounded-lg ${
+                        message.senderId === mitraProfile.email
+                          ? 'bg-blue-500 text-white'
+                          : 'bg-gray-200 text-black'
+                      }`}
+                    >
+                      <p className="text-sm">{message.message}</p>
+                      <p className="text-xs opacity-70 mt-1">
+                        {new Date(message.timestamp).toLocaleTimeString()}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+                {chatMessages.length === 0 && (
+                  <p className="text-center text-muted-foreground">Belum ada pesan</p>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <Input
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  placeholder="Ketik pesan..."
+                  onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                />
+                <Button onClick={handleSendMessage} disabled={!newMessage.trim()}>
+                  Kirim
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       )}
     </div>
   );
