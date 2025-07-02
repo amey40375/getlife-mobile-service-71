@@ -8,8 +8,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { LogOut, Plus, History, MessageCircle, ShoppingCart, Settings, MapPin, HelpCircle, CreditCard, Upload, Sparkles, Scissors, Heart, Eye, EyeOff, TrendingUp } from "lucide-react";
-import { storage, Profile, Order, ChatMessage } from "@/lib/storage";
+import { Profile, Order, ChatMessage } from "@/lib/storage";
 import { auth } from "@/lib/auth";
+import { supabaseStorage } from "@/lib/supabase-storage";
 import { useToast } from "@/hooks/use-toast";
 import EarningsModal from "./EarningsModal";
 import NotificationDropdown from "./NotificationDropdown";
@@ -37,6 +38,7 @@ const UserDashboard = ({ onLogout }: UserDashboardProps) => {
   const [showEarningsModal, setShowEarningsModal] = useState(false);
   const { toast } = useToast();
 
+  // ... keep existing code (banners array)
   const banners = [
     {
       id: 1,
@@ -92,20 +94,20 @@ const UserDashboard = ({ onLogout }: UserDashboardProps) => {
     return () => clearInterval(interval);
   }, []);
 
-  const loadData = () => {
-    const currentUser = auth.getCurrentUser();
+  const loadData = async () => {
+    const currentUser = await auth.getCurrentUser();
     if (currentUser) {
       setUserProfile(currentUser);
       
-      const allOrders = storage.getOrders();
+      const allOrders = await supabaseStorage.getOrders();
       const userOrders = allOrders.filter(order => order.userId === currentUser.email);
       setOrders(userOrders);
       
-      const allProfiles = storage.getProfiles();
+      const allProfiles = await supabaseStorage.getProfiles();
       const mitraProfiles = allProfiles.filter(p => p.role === 'mitra' && p.status === 'verified');
       setMitras(mitraProfiles);
       
-      const messages = storage.getChatMessages();
+      const messages = await supabaseStorage.getChatMessages();
       const userMessages = messages.filter(m => 
         m.senderId === currentUser.email || m.receiverId === currentUser.email
       );
@@ -113,6 +115,7 @@ const UserDashboard = ({ onLogout }: UserDashboardProps) => {
     }
   };
 
+  // ... keep existing code (formatCurrency function)
   const formatCurrency = (amount: string) => {
     const numericAmount = amount.replace(/\D/g, '');
     if (!numericAmount) return '';
@@ -153,7 +156,7 @@ const UserDashboard = ({ onLogout }: UserDashboardProps) => {
     }
   };
 
-  const handleSendTopupRequest = () => {
+  const handleSendTopupRequest = async () => {
     if (!transferProof || !topupAmount || !userProfile) {
       toast({
         variant: "destructive",
@@ -166,32 +169,29 @@ const UserDashboard = ({ onLogout }: UserDashboardProps) => {
     const numericAmount = topupAmount.replace(/\D/g, '');
     const amount = parseFloat(numericAmount);
 
-    const transactions = storage.getTransactions();
-    const newTransaction = {
-      id: Date.now().toString(),
+    const newTransaction = await supabaseStorage.createTransaction({
       userId: userProfile.email,
       userName: userProfile.name,
-      type: 'topup' as const,
+      type: 'topup',
       amount: amount,
-      status: 'pending' as const,
-      transferProof: transferProof.name,
-      createdAt: new Date().toISOString()
-    };
-
-    storage.setTransactions([...transactions, newTransaction]);
-
-    toast({
-      title: "Permintaan top-up dikirim",
-      description: "Menunggu konfirmasi admin"
+      status: 'pending',
+      transferProof: transferProof.name
     });
 
-    setTopupAmount("");
-    setTransferProof(null);
-    setShowPaymentModal(false);
-    setCurrentView("main");
+    if (newTransaction) {
+      toast({
+        title: "Permintaan top-up dikirim",
+        description: "Menunggu konfirmasi admin"
+      });
+
+      setTopupAmount("");
+      setTransferProof(null);
+      setShowPaymentModal(false);
+      setCurrentView("main");
+    }
   };
 
-  const handleCreateOrder = () => {
+  const handleCreateOrder = async () => {
     if (!selectedService || !selectedMitra || !userProfile) {
       toast({
         variant: "destructive",
@@ -201,50 +201,45 @@ const UserDashboard = ({ onLogout }: UserDashboardProps) => {
       return;
     }
 
-    const newOrder: Order = {
-      id: Date.now().toString(),
+    const newOrder = await supabaseStorage.createOrder({
       userId: userProfile.email,
       mitraId: selectedMitra,
       service: selectedService as 'GetClean' | 'GetMassage' | 'GetBarber',
-      status: 'menunggu',
-      createdAt: new Date().toISOString()
-    };
-
-    const allOrders = storage.getOrders();
-    storage.setOrders([...allOrders, newOrder]);
-
-    toast({
-      title: "Pesanan berhasil dibuat",
-      description: "Menunggu konfirmasi dari mitra"
+      status: 'menunggu'
     });
 
-    setSelectedService("");
-    setSelectedMitra("");
-    setCurrentView("main");
-    loadData();
+    if (newOrder) {
+      toast({
+        title: "Pesanan berhasil dibuat",
+        description: "Menunggu konfirmasi dari mitra"
+      });
+
+      setSelectedService("");
+      setSelectedMitra("");
+      setCurrentView("main");
+      loadData();
+    }
   };
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!newMessage.trim() || !userProfile) return;
 
-    const message: ChatMessage = {
-      id: Date.now().toString(),
+    const message = await supabaseStorage.createChatMessage({
       senderId: userProfile.email,
       receiverId: 'id.getlife@gmail.com',
       senderName: userProfile.name,
-      message: newMessage.trim(),
-      timestamp: new Date().toISOString()
-    };
-
-    const allMessages = storage.getChatMessages();
-    storage.setChatMessages([...allMessages, message]);
-    setChatMessages([...chatMessages, message]);
-    setNewMessage("");
-
-    toast({
-      title: "Pesan terkirim",
-      description: "Pesan Anda telah dikirim ke admin"
+      message: newMessage.trim()
     });
+
+    if (message) {
+      setChatMessages([...chatMessages, message]);
+      setNewMessage("");
+
+      toast({
+        title: "Pesan terkirim",
+        description: "Pesan Anda telah dikirim ke admin"
+      });
+    }
   };
 
   if (!userProfile) {
@@ -324,7 +319,7 @@ const UserDashboard = ({ onLogout }: UserDashboardProps) => {
               className="flex transition-transform duration-500 ease-in-out"
               style={{ transform: `translateX(-${currentBanner * 100}%)` }}
             >
-              {banners.map((banner, index) => (
+              {banners.map((banner) => (
                 <div key={banner.id} className="w-full flex-shrink-0 relative">
                   <div 
                     className="h-48 bg-cover bg-center relative"

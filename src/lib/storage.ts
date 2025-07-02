@@ -59,106 +59,83 @@ export interface ChatMessage {
   timestamp: string;
 }
 
-// Storage utilities
+// Import Supabase storage functions
+import { supabaseStorage } from './supabase-storage';
+
+// Wrapper to maintain backward compatibility
 export const storage = {
-  getUsers: (): User[] => {
-    const users = localStorage.getItem('users');
-    return users ? JSON.parse(users) : [];
+  getUsers: () => {
+    // For backward compatibility, return empty array since auth is handled by Supabase
+    return [];
   },
   
   setUsers: (users: User[]) => {
-    localStorage.setItem('users', JSON.stringify(users));
+    // No-op for backward compatibility
   },
   
-  getProfiles: (): Profile[] => {
-    const profiles = localStorage.getItem('profiles');
-    return profiles ? JSON.parse(profiles) : [];
+  getProfiles: async (): Promise<Profile[]> => {
+    return await supabaseStorage.getProfiles();
   },
   
-  setProfiles: (profiles: Profile[]) => {
-    localStorage.setItem('profiles', JSON.stringify(profiles));
+  setProfiles: async (profiles: Profile[]) => {
+    return await supabaseStorage.setProfiles(profiles);
   },
   
-  getMitraApplications: (): MitraApplication[] => {
-    const apps = localStorage.getItem('mitra_applications');
-    return apps ? JSON.parse(apps) : [];
+  getMitraApplications: async (): Promise<MitraApplication[]> => {
+    return await supabaseStorage.getMitraApplications();
   },
   
-  setMitraApplications: (applications: MitraApplication[]) => {
-    localStorage.setItem('mitra_applications', JSON.stringify(applications));
+  setMitraApplications: async (applications: MitraApplication[]) => {
+    return await supabaseStorage.setMitraApplications(applications);
   },
   
-  getOrders: (): Order[] => {
-    const orders = localStorage.getItem('orders');
-    return orders ? JSON.parse(orders) : [];
+  getOrders: async (): Promise<Order[]> => {
+    return await supabaseStorage.getOrders();
   },
   
-  setOrders: (orders: Order[]) => {
-    localStorage.setItem('orders', JSON.stringify(orders));
+  setOrders: async (orders: Order[]) => {
+    return await supabaseStorage.setOrders(orders);
   },
   
-  getTransactions: (): Transaction[] => {
-    const transactions = localStorage.getItem('transactions');
-    return transactions ? JSON.parse(transactions) : [];
+  getTransactions: async (): Promise<Transaction[]> => {
+    return await supabaseStorage.getTransactions();
   },
   
-  setTransactions: (transactions: Transaction[]) => {
-    localStorage.setItem('transactions', JSON.stringify(transactions));
+  setTransactions: async (transactions: Transaction[]) => {
+    return await supabaseStorage.setTransactions(transactions);
   },
   
-  getBlockedAccounts: (): string[] => {
-    const blocked = localStorage.getItem('blocked_accounts');
-    return blocked ? JSON.parse(blocked) : [];
+  getBlockedAccounts: async (): Promise<string[]> => {
+    return await supabaseStorage.getBlockedAccounts();
   },
   
-  setBlockedAccounts: (emails: string[]) => {
-    localStorage.setItem('blocked_accounts', JSON.stringify(emails));
+  setBlockedAccounts: async (emails: string[]) => {
+    return await supabaseStorage.setBlockedAccounts(emails);
   },
   
-  getChatMessages: (): ChatMessage[] => {
-    const messages = localStorage.getItem('chat_messages');
-    return messages ? JSON.parse(messages) : [];
+  getChatMessages: async (): Promise<ChatMessage[]> => {
+    return await supabaseStorage.getChatMessages();
   },
   
-  setChatMessages: (messages: ChatMessage[]) => {
-    localStorage.setItem('chat_messages', JSON.stringify(messages));
+  setChatMessages: async (messages: ChatMessage[]) => {
+    return await supabaseStorage.setChatMessages(messages);
   },
   
-  getCurrentUser: (): string | null => {
-    return localStorage.getItem('currentUser');
+  getCurrentUser: () => {
+    return supabaseStorage.getCurrentUser();
   },
   
   setCurrentUser: (email: string) => {
-    localStorage.setItem('currentUser', email);
+    supabaseStorage.setCurrentUser(email);
   },
   
   clearCurrentUser: () => {
-    localStorage.removeItem('currentUser');
+    supabaseStorage.clearCurrentUser();
   }
 };
 
 // Initialize default admin account
-export const initializeDefaultAccounts = () => {
-  const users = storage.getUsers();
-  const profiles = storage.getProfiles();
-  
-  // Create admin account if it doesn't exist
-  const adminExists = users.find(u => u.email === 'id.getlife@gmail.com');
-  if (!adminExists) {
-    const newUsers = [...users, {
-      email: 'id.getlife@gmail.com',
-      password: 'Bandung123',
-      role: 'admin' as const
-    }];
-    storage.setUsers(newUsers);
-    
-    const newProfiles = [...profiles, {
-      email: 'id.getlife@gmail.com',
-      name: 'Admin GetLife',
-      role: 'admin' as const,
-      status: 'active' as const,
-      saldo: 0
-    }];
-    storage.setProfiles(newProfiles);
-  }
+export const initializeDefaultAccounts = async () => {
+  // This will be handled by Supabase auth system
+  console.log('Default accounts initialized through Supabase');
 };

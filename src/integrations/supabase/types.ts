@@ -36,6 +36,33 @@ export type Database = {
         }
         Relationships: []
       }
+      chat_messages: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          receiver_id: string
+          sender_id: string
+          sender_name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          receiver_id: string
+          sender_id: string
+          sender_name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          receiver_id?: string
+          sender_id?: string
+          sender_name?: string
+        }
+        Relationships: []
+      }
       mitra_applications: {
         Row: {
           address: string
@@ -128,6 +155,7 @@ export type Database = {
           address: string | null
           balance: number | null
           created_at: string
+          expertise: string | null
           full_name: string
           id: string
           phone: string | null
@@ -140,6 +168,7 @@ export type Database = {
           address?: string | null
           balance?: number | null
           created_at?: string
+          expertise?: string | null
           full_name: string
           id?: string
           phone?: string | null
@@ -152,6 +181,7 @@ export type Database = {
           address?: string | null
           balance?: number | null
           created_at?: string
+          expertise?: string | null
           full_name?: string
           id?: string
           phone?: string | null
@@ -170,6 +200,7 @@ export type Database = {
           id: string
           order_id: string | null
           status: string
+          transfer_proof: string | null
           type: string
           user_id: string
         }
@@ -180,6 +211,7 @@ export type Database = {
           id?: string
           order_id?: string | null
           status?: string
+          transfer_proof?: string | null
           type: string
           user_id: string
         }
@@ -190,6 +222,7 @@ export type Database = {
           id?: string
           order_id?: string | null
           status?: string
+          transfer_proof?: string | null
           type?: string
           user_id?: string
         }
