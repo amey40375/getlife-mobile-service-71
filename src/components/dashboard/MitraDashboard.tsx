@@ -116,29 +116,38 @@ const MitraDashboard = ({ onLogout }: MitraDashboardProps) => {
     }
   }, [isWorking]);
 
-  const loadData = () => {
-    const currentUser = auth.getCurrentUser();
-    if (currentUser) {
-      setMitraProfile(currentUser);
-      
-      const allOrders = storage.getOrders();
-      const mitraOrders = allOrders.filter(order => order.mitraId === currentUser.email);
-      setOrders(mitraOrders);
-      
-      // Load chat messages
-      const messages = storage.getChatMessages();
-      const mitraMessages = messages.filter(m => 
-        m.senderId === currentUser.email || m.receiverId === currentUser.email
-      );
-      setChatMessages(mitraMessages);
-      
-      // Check if blocked
-      const blocked = storage.getBlockedAccounts();
-      if (blocked.includes(currentUser.email)) {
-        setIsBlocked(true);
-        // Calculate debt (this would be calculated based on actual business logic)
-        setDebt(50000); // Example debt
+  const loadData = async () => {
+    try {
+      const currentUser = await auth.getCurrentUser();
+      if (currentUser) {
+        setMitraProfile(currentUser);
+        
+        const allOrders = await storage.getOrders();
+        const mitraOrders = allOrders.filter(order => order.mitraId === currentUser.email);
+        setOrders(mitraOrders);
+        
+        // Load chat messages
+        const messages = await storage.getChatMessages();
+        const mitraMessages = messages.filter(m => 
+          m.senderId === currentUser.email || m.receiverId === currentUser.email
+        );
+        setChatMessages(mitraMessages);
+        
+        // Check if blocked
+        const blocked = await storage.getBlockedAccounts();
+        if (blocked.includes(currentUser.email)) {
+          setIsBlocked(true);
+          // Calculate debt (this would be calculated based on actual business logic)
+          setDebt(50000); // Example debt
+        }
       }
+    } catch (error) {
+      console.error('Error loading data:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Gagal memuat data"
+      });
     }
   };
 
@@ -182,7 +191,7 @@ const MitraDashboard = ({ onLogout }: MitraDashboardProps) => {
     }
   };
 
-  const handleSendTopupRequest = () => {
+  const handleSendTopupRequest = async () => {
     if (!transferProof || !topupAmount || !mitraProfile) {
       toast({
         variant: "destructive",
@@ -195,32 +204,41 @@ const MitraDashboard = ({ onLogout }: MitraDashboardProps) => {
     const numericAmount = topupAmount.replace(/\D/g, '');
     const amount = parseFloat(numericAmount);
 
-    const transactions = storage.getTransactions();
-    const newTransaction = {
-      id: Date.now().toString(),
-      userId: mitraProfile.email,
-      userName: mitraProfile.name,
-      type: 'topup' as const,
-      amount: amount,
-      status: 'pending' as const,
-      transferProof: transferProof.name,
-      createdAt: new Date().toISOString()
-    };
+    try {
+      const transactions = await storage.getTransactions();
+      const newTransaction = {
+        id: Date.now().toString(),
+        userId: mitraProfile.email,
+        userName: mitraProfile.name,
+        type: 'topup' as const,
+        amount: amount,
+        status: 'pending' as const,
+        transferProof: transferProof.name,
+        createdAt: new Date().toISOString()
+      };
 
-    storage.setTransactions([...transactions, newTransaction]);
+      await storage.setTransactions([...transactions, newTransaction]);
 
-    toast({
-      title: "Permintaan top-up dikirim",
-      description: "Menunggu konfirmasi admin"
-    });
+      toast({
+        title: "Permintaan top-up dikirim",
+        description: "Menunggu konfirmasi admin"
+      });
 
-    setTopupAmount("");
-    setTransferProof(null);
-    setShowPaymentModal(false);
-    setCurrentView("main");
+      setTopupAmount("");
+      setTransferProof(null);
+      setShowPaymentModal(false);
+      setCurrentView("main");
+    } catch (error) {
+      console.error('Error sending topup request:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Gagal mengirim permintaan top-up"
+      });
+    }
   };
 
-  const handleAcceptOrder = (order: Order) => {
+  const handleAcceptOrder = async (order: Order) => {
     if (!mitraProfile) return;
 
     if (mitraProfile.saldo < 10000) {
@@ -232,48 +250,66 @@ const MitraDashboard = ({ onLogout }: MitraDashboardProps) => {
       return;
     }
 
-    const updatedOrders = orders.map(o =>
-      o.id === order.id ? { ...o, status: 'dikerjakan' as const } : o
-    );
-    
-    const allOrders = storage.getOrders();
-    const newAllOrders = allOrders.map(o =>
-      o.id === order.id ? { ...o, status: 'dikerjakan' as const } : o
-    );
-    
-    storage.setOrders(newAllOrders);
-    setOrders(updatedOrders);
+    try {
+      const updatedOrders = orders.map(o =>
+        o.id === order.id ? { ...o, status: 'dikerjakan' as const } : o
+      );
+      
+      const allOrders = await storage.getOrders();
+      const newAllOrders = allOrders.map(o =>
+        o.id === order.id ? { ...o, status: 'dikerjakan' as const } : o
+      );
+      
+      await storage.setOrders(newAllOrders);
+      setOrders(updatedOrders);
 
-    toast({
-      title: "Pesanan diterima",
-      description: "Pesanan berhasil diterima"
-    });
+      toast({
+        title: "Pesanan diterima",
+        description: "Pesanan berhasil diterima"
+      });
+    } catch (error) {
+      console.error('Error accepting order:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Gagal menerima pesanan"
+      });
+    }
   };
 
-  const handleStartWork = (order: Order) => {
-    setActiveOrder(order);
-    setIsWorking(true);
-    setWorkTimer(0);
+  const handleStartWork = async (order: Order) => {
+    try {
+      setActiveOrder(order);
+      setIsWorking(true);
+      setWorkTimer(0);
 
-    const updatedOrders = orders.map(o =>
-      o.id === order.id ? { ...o, startTime: new Date().toISOString() } : o
-    );
-    
-    const allOrders = storage.getOrders();
-    const newAllOrders = allOrders.map(o =>
-      o.id === order.id ? { ...o, startTime: new Date().toISOString() } : o
-    );
-    
-    storage.setOrders(newAllOrders);
-    setOrders(updatedOrders);
+      const updatedOrders = orders.map(o =>
+        o.id === order.id ? { ...o, startTime: new Date().toISOString() } : o
+      );
+      
+      const allOrders = await storage.getOrders();
+      const newAllOrders = allOrders.map(o =>
+        o.id === order.id ? { ...o, startTime: new Date().toISOString() } : o
+      );
+      
+      await storage.setOrders(newAllOrders);
+      setOrders(updatedOrders);
 
-    toast({
-      title: "Mulai bekerja",
-      description: "Timer dimulai"
-    });
+      toast({
+        title: "Mulai bekerja",
+        description: "Timer dimulai"
+      });
+    } catch (error) {
+      console.error('Error starting work:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Gagal memulai pekerjaan"
+      });
+    }
   };
 
-  const handleFinishWork = () => {
+  const handleFinishWork = async () => {
     if (!activeOrder || !mitraProfile) return;
 
     const totalCost = Math.round(workTimer * RATE_PER_SECOND);
@@ -281,59 +317,72 @@ const MitraDashboard = ({ onLogout }: MitraDashboardProps) => {
     const newSaldo = mitraProfile.saldo - adminCut;
 
     if (newSaldo < 0) {
-      // Block account
-      const blocked = storage.getBlockedAccounts();
-      storage.setBlockedAccounts([...blocked, mitraProfile.email]);
-      setIsBlocked(true);
-      setDebt(Math.abs(newSaldo));
-      
-      toast({
-        variant: "destructive",
-        title: "Akun terkunci",
-        description: `Tagihan Rp${Math.abs(newSaldo).toLocaleString()} belum dibayar`
-      });
+      try {
+        // Block account
+        const blocked = await storage.getBlockedAccounts();
+        await storage.setBlockedAccounts([...blocked, mitraProfile.email]);
+        setIsBlocked(true);
+        setDebt(Math.abs(newSaldo));
+        
+        toast({
+          variant: "destructive",
+          title: "Akun terkunci",
+          description: `Tagihan Rp${Math.abs(newSaldo).toLocaleString()} belum dibayar`
+        });
+      } catch (error) {
+        console.error('Error blocking account:', error);
+      }
       return;
     }
 
-    // Update order
-    const updatedOrders = orders.map(o =>
-      o.id === activeOrder.id ? {
-        ...o,
-        status: 'selesai' as const,
-        endTime: new Date().toISOString(),
-        totalCost: totalCost
-      } : o
-    );
-    
-    const allOrders = storage.getOrders();
-    const newAllOrders = allOrders.map(o =>
-      o.id === activeOrder.id ? {
-        ...o,
-        status: 'selesai' as const,
-        endTime: new Date().toISOString(),
-        totalCost: totalCost
-      } : o
-    );
-    
-    storage.setOrders(newAllOrders);
-    setOrders(updatedOrders);
+    try {
+      // Update order
+      const updatedOrders = orders.map(o =>
+        o.id === activeOrder.id ? {
+          ...o,
+          status: 'selesai' as const,
+          endTime: new Date().toISOString(),
+          totalCost: totalCost
+        } : o
+      );
+      
+      const allOrders = await storage.getOrders();
+      const newAllOrders = allOrders.map(o =>
+        o.id === activeOrder.id ? {
+          ...o,
+          status: 'selesai' as const,
+          endTime: new Date().toISOString(),
+          totalCost: totalCost
+        } : o
+      );
+      
+      await storage.setOrders(newAllOrders);
+      setOrders(updatedOrders);
 
-    // Update mitra saldo
-    const profiles = storage.getProfiles();
-    const updatedProfiles = profiles.map(p =>
-      p.email === mitraProfile.email ? { ...p, saldo: newSaldo } : p
-    );
-    storage.setProfiles(updatedProfiles);
-    setMitraProfile({ ...mitraProfile, saldo: newSaldo });
+      // Update mitra saldo
+      const profiles = await storage.getProfiles();
+      const updatedProfiles = profiles.map(p =>
+        p.email === mitraProfile.email ? { ...p, saldo: newSaldo } : p
+      );
+      await storage.setProfiles(updatedProfiles);
+      setMitraProfile({ ...mitraProfile, saldo: newSaldo });
 
-    setIsWorking(false);
-    setActiveOrder(null);
-    setWorkTimer(0);
+      setIsWorking(false);
+      setActiveOrder(null);
+      setWorkTimer(0);
 
-    toast({
-      title: "Pekerjaan selesai",
-      description: `Total biaya: Rp${totalCost.toLocaleString()}, Potongan: Rp${adminCut.toLocaleString()}`
-    });
+      toast({
+        title: "Pekerjaan selesai",
+        description: `Total biaya: Rp${totalCost.toLocaleString()}, Potongan: Rp${adminCut.toLocaleString()}`
+      });
+    } catch (error) {
+      console.error('Error finishing work:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Gagal menyelesaikan pekerjaan"
+      });
+    }
   };
 
   const formatTime = (seconds: number) => {
@@ -343,27 +392,36 @@ const MitraDashboard = ({ onLogout }: MitraDashboardProps) => {
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!newMessage.trim() || !mitraProfile) return;
 
-    const messages = storage.getChatMessages();
-    const newChatMessage: ChatMessage = {
-      id: Date.now().toString(),
-      senderId: mitraProfile.email,
-      receiverId: 'id.getlife@gmail.com', // Admin email
-      senderName: mitraProfile.name,
-      message: newMessage.trim(),
-      timestamp: new Date().toISOString()
-    };
+    try {
+      const messages = await storage.getChatMessages();
+      const newChatMessage: ChatMessage = {
+        id: Date.now().toString(),
+        senderId: mitraProfile.email,
+        receiverId: 'id.getlife@gmail.com', // Admin email
+        senderName: mitraProfile.name,
+        message: newMessage.trim(),
+        timestamp: new Date().toISOString()
+      };
 
-    storage.setChatMessages([...messages, newChatMessage]);
-    setChatMessages([...chatMessages, newChatMessage]);
-    setNewMessage("");
+      await storage.setChatMessages([...messages, newChatMessage]);
+      setChatMessages([...chatMessages, newChatMessage]);
+      setNewMessage("");
 
-    toast({
-      title: "Pesan terkirim",
-      description: "Pesan berhasil dikirim ke admin"
-    });
+      toast({
+        title: "Pesan terkirim",
+        description: "Pesan berhasil dikirim ke admin"
+      });
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",  
+        description: "Gagal mengirim pesan"
+      });
+    }
   };
 
   if (!mitraProfile) {

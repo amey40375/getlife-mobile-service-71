@@ -39,7 +39,7 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
   const [showEarningsModal, setShowEarningsModal] = useState(false);
   const [showBannerModal, setShowBannerModal] = useState(false);
   const [showWarningModal, setShowWarningModal] = useState(false);
-  const [showScrollingTextModal] = useState(false);
+  const [showScrollingTextModal, setShowScrollingTextModal] = useState(false);
   const [newBannerTitle, setNewBannerTitle] = useState("");
   const [newBannerSubtitle, setNewBannerSubtitle] = useState("");
   const [newBannerImage, setNewBannerImage] = useState("");
@@ -52,18 +52,27 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
   }, []);
 
   const loadData = async () => {
-    const [apps, profs, trans, messages] = await Promise.all([
-      storage.getMitraApplications(),
-      storage.getProfiles(),
-      storage.getTransactions(),
-      storage.getChatMessages()
-    ]);
-    
-    setApplications(apps);
-    setProfiles(profs);
-    setTransactions(trans.filter(t => t.status === 'pending'));
-    setTopupHistory(trans.filter(t => t.status !== 'pending'));
-    setChatMessages(messages);
+    try {
+      const [apps, profs, trans, messages] = await Promise.all([
+        storage.getMitraApplications(),
+        storage.getProfiles(),
+        storage.getTransactions(),
+        storage.getChatMessages()
+      ]);
+      
+      setApplications(apps);
+      setProfiles(profs);
+      setTransactions(trans.filter(t => t.status === 'pending'));
+      setTopupHistory(trans.filter(t => t.status !== 'pending'));
+      setChatMessages(messages);
+    } catch (error) {
+      console.error('Error loading data:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Gagal memuat data"
+      });
+    }
   };
 
   const handleVerifyMitra = async () => {
@@ -76,39 +85,48 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
       return;
     }
 
-    const users = storage.getUsers();
-    const newUser = {
-      email: verificationData.email,
-      password: verificationData.password,
-      role: 'mitra' as const
-    };
-    storage.setUsers([...users, newUser]);
+    try {
+      const users = await storage.getUsers();
+      const newUser = {
+        email: verificationData.email,
+        password: verificationData.password,
+        role: 'mitra' as const
+      };
+      await storage.setUsers([...users, newUser]);
 
-    const newProfile = {
-      email: verificationData.email,
-      name: verificationData.name,
-      phone: selectedApp.phone,
-      address: selectedApp.address,
-      role: 'mitra' as const,
-      status: 'verified' as const,
-      saldo: 0,
-      expertise: selectedApp.expertise
-    };
-    await storage.setProfiles([...profiles, newProfile]);
+      const newProfile = {
+        email: verificationData.email,
+        name: verificationData.name,
+        phone: selectedApp.phone,
+        address: selectedApp.address,
+        role: 'mitra' as const,
+        status: 'verified' as const,
+        saldo: 0,
+        expertise: selectedApp.expertise
+      };
+      await storage.setProfiles([...profiles, newProfile]);
 
-    const updatedApps = applications.map(app =>
-      app.id === selectedApp.id ? { ...app, status: 'approved' as const } : app
-    );
-    await storage.setMitraApplications(updatedApps);
+      const updatedApps = applications.map(app =>
+        app.id === selectedApp.id ? { ...app, status: 'approved' as const } : app
+      );
+      await storage.setMitraApplications(updatedApps);
 
-    toast({
-      title: "Mitra berhasil dibuat",
-      description: `Akun mitra ${verificationData.name} telah dibuat dan diverifikasi`
-    });
+      toast({
+        title: "Mitra berhasil dibuat",
+        description: `Akun mitra ${verificationData.name} telah dibuat dan diverifikasi`
+      });
 
-    setSelectedApp(null);
-    setVerificationData({ name: "", email: "", password: "" });
-    loadData();
+      setSelectedApp(null);
+      setVerificationData({ name: "", email: "", password: "" });
+      loadData();
+    } catch (error) {
+      console.error('Error verifying mitra:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Gagal memverifikasi mitra"
+      });
+    }
   };
 
   const handleTransferSaldo = async () => {
@@ -131,58 +149,85 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
       return;
     }
 
-    const updatedProfiles = profiles.map(profile =>
-      profile.email === selectedProfile.email
-        ? { ...profile, saldo: profile.saldo + amount }
-        : profile
-    );
-    await storage.setProfiles(updatedProfiles);
+    try {
+      const updatedProfiles = profiles.map(profile =>
+        profile.email === selectedProfile.email
+          ? { ...profile, saldo: profile.saldo + amount }
+          : profile
+      );
+      await storage.setProfiles(updatedProfiles);
 
-    toast({
-      title: "Transfer berhasil",
-      description: `Saldo Rp${amount.toLocaleString()} telah ditransfer ke ${selectedProfile.name}`
-    });
+      toast({
+        title: "Transfer berhasil",
+        description: `Saldo Rp${amount.toLocaleString()} telah ditransfer ke ${selectedProfile.name}`
+      });
 
-    setSelectedProfile(null);
-    setTransferAmount("");
-    loadData();
+      setSelectedProfile(null);
+      setTransferAmount("");
+      loadData();
+    } catch (error) {
+      console.error('Error transferring saldo:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Gagal mentransfer saldo"
+      });
+    }
   };
 
   const handleConfirmTopup = async (transaction: Transaction) => {
-    const allTransactions = await storage.getTransactions();
-    const updatedTransactions = allTransactions.map(t =>
-      t.id === transaction.id ? { ...t, status: 'approved' as const } : t
-    );
-    await storage.setTransactions(updatedTransactions);
+    try {
+      const allTransactions = await storage.getTransactions();
+      const updatedTransactions = allTransactions.map(t =>
+        t.id === transaction.id ? { ...t, status: 'approved' as const } : t
+      );
+      await storage.setTransactions(updatedTransactions);
 
-    const updatedProfiles = profiles.map(profile =>
-      profile.email === transaction.userId
-        ? { ...profile, saldo: profile.saldo + transaction.amount }
-        : profile
-    );
-    await storage.setProfiles(updatedProfiles);
+      const updatedProfiles = profiles.map(profile =>
+        profile.email === transaction.userId
+          ? { ...profile, saldo: profile.saldo + transaction.amount }
+          : profile
+      );
+      await storage.setProfiles(updatedProfiles);
 
-    toast({
-      title: "Top-up dikonfirmasi",
-      description: `Top-up Rp${transaction.amount.toLocaleString()} berhasil dikonfirmasi`
-    });
+      toast({
+        title: "Top-up dikonfirmasi",
+        description: `Top-up Rp${transaction.amount.toLocaleString()} berhasil dikonfirmasi`
+      });
 
-    loadData();
+      loadData();
+    } catch (error) {
+      console.error('Error confirming topup:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Gagal mengkonfirmasi top-up"
+      });
+    }
   };
 
   const handleRejectTopup = async (transaction: Transaction) => {
-    const allTransactions = await storage.getTransactions();
-    const updatedTransactions = allTransactions.map(t =>
-      t.id === transaction.id ? { ...t, status: 'rejected' as const } : t
-    );
-    await storage.setTransactions(updatedTransactions);
+    try {
+      const allTransactions = await storage.getTransactions();
+      const updatedTransactions = allTransactions.map(t =>
+        t.id === transaction.id ? { ...t, status: 'rejected' as const } : t
+      );
+      await storage.setTransactions(updatedTransactions);
 
-    toast({
-      title: "Top-up ditolak",
-      description: "Permintaan top-up telah ditolak"
-    });
+      toast({
+        title: "Top-up ditolak",
+        description: "Permintaan top-up telah ditolak"
+      });
 
-    loadData();
+      loadData();
+    } catch (error) {
+      console.error('Error rejecting topup:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Gagal menolak top-up"
+      });
+    }
   };
 
   const handleAddBanner = () => {
@@ -276,24 +321,33 @@ const AdminDashboard = ({ onLogout }: AdminDashboardProps) => {
     const adminProfile = profiles.find(p => p.role === 'admin');
     if (!adminProfile) return;
 
-    const message: ChatMessage = {
-      id: Date.now().toString(),
-      senderId: 'id.getlife@gmail.com',
-      receiverId: selectedChat,
-      senderName: 'Admin GetLife',
-      message: newMessage.trim(),
-      timestamp: new Date().toISOString()
-    };
+    try {
+      const message: ChatMessage = {
+        id: Date.now().toString(),
+        senderId: 'id.getlife@gmail.com',
+        receiverId: selectedChat,
+        senderName: 'Admin GetLife',
+        message: newMessage.trim(),
+        timestamp: new Date().toISOString()
+      };
 
-    const allMessages = await storage.getChatMessages();
-    await storage.setChatMessages([...allMessages, message]);
-    setChatMessages([...allMessages, message]);
-    setNewMessage("");
+      const allMessages = await storage.getChatMessages();
+      await storage.setChatMessages([...allMessages, message]);
+      setChatMessages([...allMessages, message]);
+      setNewMessage("");
 
-    toast({
-      title: "Pesan terkirim",
-      description: "Pesan Anda telah dikirim"
-    });
+      toast({
+        title: "Pesan terkirim",
+        description: "Pesan Anda telah dikirim"
+      });
+    } catch (error) {
+      console.error('Error sending message:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Gagal mengirim pesan"
+      });
+    }
   };
 
   if (currentView === "main") {
