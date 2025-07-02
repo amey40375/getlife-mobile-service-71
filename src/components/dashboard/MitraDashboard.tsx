@@ -336,6 +336,29 @@ const MitraDashboard = ({ onLogout }: MitraDashboardProps) => {
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const handleSendMessage = () => {
+    if (!newMessage.trim() || !mitraProfile) return;
+
+    const messages = storage.getChatMessages();
+    const newChatMessage: ChatMessage = {
+      id: Date.now().toString(),
+      senderId: mitraProfile.email,
+      receiverId: 'id.getlife@gmail.com', // Admin email
+      senderName: mitraProfile.name,
+      message: newMessage.trim(),
+      timestamp: new Date().toISOString()
+    };
+
+    storage.setChatMessages([...messages, newChatMessage]);
+    setChatMessages([...chatMessages, newChatMessage]);
+    setNewMessage("");
+
+    toast({
+      title: "Pesan terkirim",
+      description: "Pesan berhasil dikirim ke admin"
+    });
+  };
+
   if (!mitraProfile) {
     return <div>Loading...</div>;
   }
